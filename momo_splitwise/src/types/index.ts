@@ -4,6 +4,19 @@ export interface User {
   email: string;
   phoneNumber: string;
   avatar?: string;
+  createdAt: string; // Changed from Date to string for serialization
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description: string;
+  currency: string;
+  color: string;
+  members: string[];
+  createdBy: string;
+  createdAt: string; // Changed from Date to string
+  updatedAt: string; // Changed from Date to string
 }
 
 export interface Expense {
@@ -11,65 +24,40 @@ export interface Expense {
   description: string;
   amount: number;
   currency: string;
-  paidBy: string; // User ID
+  paidBy: string;
   splitType: 'equal' | 'percentage' | 'custom';
-  splits: Split[];
-  createdAt: Date;
+  splits: ExpenseSplit[];
   groupId: string;
   category: string;
+  createdAt: string; // Changed from Date to string
 }
 
-export interface Split {
+export interface ExpenseSplit {
   userId: string;
   amount: number;
   percentage?: number;
 }
 
-export interface Group {
-  id: string;
-  name: string;
-  description: string;
-  members: string[]; // User IDs
-  createdBy: string;
-  createdAt: Date;
-  currency: string;
-}
-
 export interface Balance {
   userId: string;
-  amount: number;
+  groupId: string;
+  balance: number;
+  currency: string;
 }
 
 export interface Debt {
   from: string;
   to: string;
   amount: number;
+  currency: string;
+  groupId?: string;
+  groupName?: string;
 }
 
-export interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (user: Omit<User, 'id'> & { password: string }) => Promise<boolean>;
-  logout: () => void;
-  isAuthenticated: boolean;
-}
-
-export interface AppContextType {
-  groups: Group[];
-  expenses: Expense[];
-  users: User[];
-  currentGroup: Group | null;
-  setCurrentGroup: (group: Group | null) => void;
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Expense;
-  addGroup: (group: Omit<Group, 'id' | 'createdAt'>) => Group;
-  addUserToGroup: (groupId: string, userId: string) => void;
-  getGroupExpenses: (groupId: string) => Expense[];
-  calculateBalances: (groupId: string) => Map<string, number>;
-  simplifyDebts: (groupId: string) => Debt[];
-  getExpenseReport: (groupId: string) => {
-    totalExpenses: number;
-    expenseCount: number;
-    categoryBreakdown: Record<string, number>;
-    memberContributions: Record<string, number>;
-  };
+export interface RegistrationData {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
+  // createdAt is handled by the system
 }

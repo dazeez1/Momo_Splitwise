@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Users, DollarSign, FileText } from 'lucide-react';
-import type { Expense, User } from '../../types';
+import type { User } from '../../types';
 import { useApp } from '../../contexts/AppContext';
 import { calculateEqualSplit, calculatePercentageSplit } from '../../utils/calculations';
 
@@ -190,7 +190,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Add New Expense</h2>
           <button
@@ -212,7 +212,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
               type="text"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
               placeholder="What was this expense for?"
               required
               disabled={isSubmitting}
@@ -231,7 +231,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
                 min="0.01"
                 value={formData.amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
                 placeholder="0.00"
                 required
                 disabled={isSubmitting}
@@ -246,7 +246,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
               <select
                 value={formData.paidBy}
                 onChange={(e) => setFormData(prev => ({ ...prev, paidBy: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
                 required
                 disabled={isSubmitting}
               >
@@ -263,7 +263,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
             <select
               value={formData.category}
               onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
               required
               disabled={isSubmitting}
             >
@@ -285,7 +285,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
                     type="radio"
                     checked={formData.splitType === type}
                     onChange={() => handleSplitTypeChange(type)}
-                    className="text-primary-600 focus:ring-primary-500"
+                    className="text-yellow-700 focus:ring-yellow-700"
                     disabled={isSubmitting}
                   />
                   <span className="text-sm text-gray-700 capitalize">{type}</span>
@@ -322,7 +322,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
                           max="100"
                           value={split.percentage}
                           onChange={(e) => handlePercentageChange(index, e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-700 transition-all duration-200"
                           placeholder="%"
                           disabled={isSubmitting}
                         />
@@ -337,7 +337,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
                           min="0"
                           value={split.amount}
                           onChange={(e) => handleCustomAmountChange(index, e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-700 transition-all duration-200"
                           placeholder="0.00"
                           readOnly={formData.splitType === 'equal'}
                           disabled={isSubmitting || formData.splitType === 'equal'}
@@ -360,14 +360,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ isOpen, onClose, groupId, use
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-yellow-700 to-yellow-600 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Adding...' : 'Add Expense'}

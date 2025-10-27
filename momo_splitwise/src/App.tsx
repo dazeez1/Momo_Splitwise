@@ -1,53 +1,110 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
+import DashboardLayout from './components/layout/DashboardLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
-import Header from './components/layout/Header';
+
+// Public Pages
+import Home from './pages/Home';
+import About from './pages/About';
+import FAQ from './pages/FAQ';
+import Contact from './pages/Contact';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Groups from './pages/Groups';
-import GroupDetails from './pages/GroupDetails';
-import Expenses from './pages/Expenses';
+import Register from './pages/Register';
+
+// Dashboard Pages
+import Dashboard from './pages/dashboard/Dashboard';
+import Groups from './pages/dashboard/Groups';
+import Expenses from './pages/dashboard/Expenses';
+import Balances from './pages/dashboard/Balances';
+import Payments from './pages/dashboard/Payments';
+import Profile from './pages/dashboard/Profile';
+import SettingsPage from './pages/dashboard/Settings';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <AppProvider>
-          <div className="min-h-screen bg-gray-50">
-            <Header />
+          <div className="min-h-screen bg-white">
             <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/register" element={<Register />} />
+
+              {/* Protected Dashboard Routes */}
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/groups"
+                path="/dashboard/groups"
                 element={
                   <ProtectedRoute>
-                    <Groups />
+                    <DashboardLayout>
+                      <Groups />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/groups/:groupId"
+                path="/dashboard/expenses"
                 element={
                   <ProtectedRoute>
-                    <GroupDetails />
+                    <DashboardLayout>
+                      <Expenses />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/expenses"
+                path="/dashboard/balances"
                 element={
                   <ProtectedRoute>
-                    <Expenses />
+                    <DashboardLayout>
+                      <Balances />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/payments"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Payments />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/profile"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Profile />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/settings"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <SettingsPage />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
