@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import AuthSync from './components/AuthSync';
 
 // Public Pages
 import Home from './pages/Home';
@@ -20,13 +21,15 @@ import Expenses from './pages/dashboard/Expenses';
 import Balances from './pages/dashboard/Balances';
 import Payments from './pages/dashboard/Payments';
 import Profile from './pages/dashboard/Profile';
-import SettingsPage from './pages/dashboard/Settings';
+import Settings from './pages/dashboard/Settings';
+import Reports from './pages/dashboard/Reports';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <AppProvider>
+          <AuthSync />
           <div className="min-h-screen bg-white">
             <Routes>
               {/* Public Routes */}
@@ -99,11 +102,21 @@ function App() {
                 }
               />
               <Route
+                path="/dashboard/reports"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Reports />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/dashboard/settings"
                 element={
                   <ProtectedRoute>
                     <DashboardLayout>
-                      <SettingsPage />
+                      <Settings />
                     </DashboardLayout>
                   </ProtectedRoute>
                 }

@@ -1,44 +1,54 @@
 import React, { useState, useEffect } from "react";
 import { X, Users, FileText, User } from "lucide-react";
+import type { Group } from "../../types";
 import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
 
-interface CreateGroupModalProps {
+interface EditGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
+  group: Group;
 }
 
 // Color options for groups
 const GROUP_COLORS = [
-  "bg-linear-to-r from-purple-500 to-pink-500",
+  "bg-linear-to-r from-yellow-600 to-yellow-700",
   "bg-linear-to-r from-blue-500 to-cyan-500",
   "bg-linear-to-r from-green-500 to-emerald-500",
   "bg-linear-to-r from-orange-500 to-red-500",
-  "bg-linear-to-r from-indigo-500 to-purple-500",
+  "bg-linear-to-r from-purple-500 to-pink-500",
   "bg-linear-to-r from-rose-500 to-pink-500",
 ];
 
-const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
+const EditGroupModal: React.FC<EditGroupModalProps> = ({
   isOpen,
   onClose,
+  group,
 }) => {
-  const { addGroup, users } = useApp();
+  const { updateGroup, users } = useApp();
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    currency: "Rwf",
-    color: GROUP_COLORS[0],
+    name: group.name,
+    description: group.description,
+    currency: group.currency,
+    color: group.color,
   });
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>(
+    group.members
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen && user) {
-      // Auto-select current user
-      setSelectedMembers([user.id]);
+    if (isOpen) {
+      setFormData({
+        name: group.name,
+        description: group.description,
+        currency: group.currency,
+        color: group.color,
+      });
+      setSelectedMembers(group.members);
     }
-  }, [isOpen, user]);
+  }, [isOpen, group]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,37 +66,27 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      addGroup({
+      const updatedGroup: Group = {
+        ...group,
         name: formData.name.trim(),
         description: formData.description.trim(),
-        members: selectedMembers,
-        createdBy: user?.id || "",
         currency: formData.currency,
         color: formData.color,
-      });
+        members: selectedMembers,
+        // Removed updatedAt property since it doesn't exist in Group type
+      };
 
+      updateGroup(updatedGroup);
       onClose();
-      resetForm();
     } catch (error) {
-      console.error("Error creating group:", error);
-      alert("Failed to create group. Please try again.");
+      console.error("Error updating group:", error);
+      alert("Failed to update group. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      currency: "Rwf",
-      color: GROUP_COLORS[0],
-    });
-    setSelectedMembers(user ? [user.id] : []);
-  };
-
   const handleClose = () => {
-    resetForm();
     onClose();
   };
 
@@ -104,9 +104,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Create New Group
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-900">Edit Group</h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -128,7 +126,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               placeholder="e.g., Roommates, Weekend Trip, Chama Group"
               required
               disabled={isSubmitting}
@@ -149,7 +147,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 }))
               }
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               placeholder="What's this group for?"
               disabled={isSubmitting}
             />
@@ -184,11 +182,12 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, currency: e.target.value }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               required
               disabled={isSubmitting}
             >
-              <option value="Rwf">Rwandan Francs (Rwf)</option>
+              <option value="RWF">Rwandan Franc (RWF)</option>
+              <option value="KES">Kenyan Shilling (KES)</option>
               <option value="USD">US Dollar (USD)</option>
               <option value="EUR">Euro (EUR)</option>
               <option value="GBP">British Pound (GBP)</option>
@@ -197,7 +196,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Add Members *
+              Group Members *
               <span className="ml-2 text-xs text-gray-500">
                 {selectedMembers.length} member(s) selected
               </span>
@@ -214,7 +213,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                       type="checkbox"
                       checked={selectedMembers.includes(user.id)}
                       onChange={() => toggleMember(user.id)}
-                      className="text-luxury-purple focus:ring-luxury-purple rounded"
+                      className="text-yellow-600 focus:ring-yellow-600 rounded"
                       disabled={isSubmitting}
                     />
                     <div className="flex-1">
@@ -228,30 +227,22 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                   </label>
                 ))}
             </div>
-            {users.filter((u) => u.id !== user?.id).length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No other users found. You can still create a group and invite
-                friends later!
-              </p>
-            )}
 
             {/* Show current user as auto-selected */}
             {user && (
-              <div className="mt-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
                     checked={true}
                     disabled
-                    className="text-luxury-purple focus:ring-luxury-purple rounded"
+                    className="text-yellow-600 focus:ring-yellow-600 rounded"
                   />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">
                       {user.name} (You)
                     </p>
-                    <p className="text-xs text-gray-500">
-                      Automatically added as member
-                    </p>
+                    <p className="text-xs text-gray-500">Group admin</p>
                   </div>
                 </div>
               </div>
@@ -262,17 +253,17 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent disabled:opacity-50 transition-all duration-200"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-luxury-purple to-luxury-pink border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
+              className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-yellow-600 to-yellow-700 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating..." : "Create Group"}
+              {isSubmitting ? "Updating..." : "Update Group"}
             </button>
           </div>
         </form>
@@ -281,4 +272,4 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   );
 };
 
-export default CreateGroupModal;
+export default EditGroupModal;

@@ -3,12 +3,16 @@ import { Plus, Search, Filter, Grid, List, CreditCard, MoreVertical, Edit, Trash
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ExpenseForm from '../../components/expenses/ExpenseForm';
-import { formatCurrency, formatDate } from '../../utils/calculations';
+import EditExpenseModal from '../../components/expenses/EditExpenseModal';
+import { formatCurrency } from '../../utils/calculations';
+import type { Expense } from '../../types';
 
 const Expenses: React.FC = () => {
-  const { expenses, groups, users } = useApp();
+  const { expenses, groups, users, deleteExpense } = useApp();
   const { user } = useAuth();
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedGroup, setSelectedGroup] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -41,6 +45,34 @@ const Expenses: React.FC = () => {
     setActiveDropdown(activeDropdown === expenseId ? null : expenseId);
   };
 
+  const handleEdit = (expense: Expense) => {
+    setSelectedExpense(expense);
+    setIsEditModalOpen(true);
+    setActiveDropdown(null);
+  };
+
+  const handleDelete = (expenseId: string) => {
+    deleteExpense(expenseId);
+    setActiveDropdown(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedExpense(null);
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      food: 'bg-green-100 text-green-800',
+      transport: 'bg-blue-100 text-blue-800',
+      utilities: 'bg-yellow-100 text-yellow-800',
+      entertainment: 'bg-purple-100 text-purple-800',
+      shopping: 'bg-pink-100 text-pink-800',
+      other: 'bg-gray-100 text-gray-800',
+    };
+    return colors[category as keyof typeof colors] || colors.other;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -53,7 +85,7 @@ const Expenses: React.FC = () => {
         </div>
         <button
           onClick={() => setIsExpenseFormOpen(true)}
-          className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-luxury-purple to-luxury-pink text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-linear-to-r from-yellow-600 to-yellow-700 text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
         >
           <Plus className="h-5 w-5" />
           <span>Add Expense</span>
@@ -77,7 +109,7 @@ const Expenses: React.FC = () => {
                 placeholder="Search by description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               />
             </div>
           </div>
@@ -90,7 +122,7 @@ const Expenses: React.FC = () => {
             <select
               value={selectedGroup}
               onChange={(e) => setSelectedGroup(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
             >
               <option value="all">All Groups</option>
               {userGroups.map(group => (
@@ -109,7 +141,7 @@ const Expenses: React.FC = () => {
                 onClick={() => setViewMode('grid')}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                   viewMode === 'grid'
-                    ? 'bg-white text-luxury-purple shadow-sm'
+                    ? 'bg-white text-yellow-600 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -119,7 +151,7 @@ const Expenses: React.FC = () => {
                 onClick={() => setViewMode('list')}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                   viewMode === 'list'
-                    ? 'bg-white text-luxury-purple shadow-sm'
+                    ? 'bg-white text-yellow-600 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -133,6 +165,11 @@ const Expenses: React.FC = () => {
           <p className="text-sm text-gray-600">
             Showing {filteredExpenses.length} of {userExpenses.length} expenses
           </p>
+          {selectedGroup !== 'all' && (
+            <p className="text-sm text-yellow-600 font-medium">
+              {getGroupName(selectedGroup)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -151,7 +188,7 @@ const Expenses: React.FC = () => {
           </p>
           <button
             onClick={() => setIsExpenseFormOpen(true)}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-luxury-purple to-luxury-pink text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-linear-to-r from-yellow-600 to-yellow-700 text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             <Plus className="h-5 w-5" />
             <span>Add Your First Expense</span>
@@ -163,12 +200,14 @@ const Expenses: React.FC = () => {
             const userSplit = expense.splits.find(split => split.userId === user?.id);
             const paidByUser = users.find(u => u.id === expense.paidBy);
             const isUserPayer = expense.paidBy === user?.id;
+            const group = groups.find(g => g.id === expense.groupId);
             
             return (
               <div
                 key={expense.id}
                 className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
               >
+                <div className={`h-2 ${group?.color || 'bg-gray-200'} rounded-t-2xl`}></div>
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
@@ -176,12 +215,12 @@ const Expenses: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-900">
                           {expense.description}
                         </h3>
-                        <span className="px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded-full capitalize">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(expense.category)}`}>
                           {expense.category}
                         </span>
                       </div>
                       <p className="text-sm text-gray-500">
-                        {getGroupName(expense.groupId)} • {formatDate(expense.createdAt)}
+                        {getGroupName(expense.groupId)} • {new Date(expense.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="relative">
@@ -194,11 +233,17 @@ const Expenses: React.FC = () => {
                       
                       {activeDropdown === expense.id && (
                         <div className="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                          <button className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                          <button 
+                            onClick={() => handleEdit(expense)}
+                            className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
                             <Edit className="h-4 w-4" />
                             <span>Edit Expense</span>
                           </button>
-                          <button className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50">
+                          <button 
+                            onClick={() => handleDelete(expense.id)}
+                            className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                          >
                             <Trash2 className="h-4 w-4" />
                             <span>Delete Expense</span>
                           </button>
@@ -211,14 +256,14 @@ const Expenses: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">Amount</span>
                       <span className="text-lg font-bold text-gray-900">
-                        {formatCurrency(expense.amount)}
+                        {formatCurrency(expense.amount, expense.currency)}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">Paid by</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {paidByUser?.name}
+                      <span className={`text-sm font-medium ${isUserPayer ? 'text-green-600' : 'text-gray-900'}`}>
+                        {isUserPayer ? 'You' : paidByUser?.name}
                       </span>
                     </div>
 
@@ -231,14 +276,14 @@ const Expenses: React.FC = () => {
 
                     {userSplit && (
                       <div className={`p-3 rounded-lg ${
-                        isUserPayer ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-50 border border-rose-200'
+                        isUserPayer ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'
                       }`}>
                         <p className={`text-sm font-medium ${
-                          isUserPayer ? 'text-emerald-700' : 'text-rose-700'
+                          isUserPayer ? 'text-green-700' : 'text-yellow-700'
                         }`}>
                           {isUserPayer
-                            ? `You paid ${formatCurrency(expense.amount - userSplit.amount)} more than your share`
-                            : `You owe ${formatCurrency(userSplit.amount)}`
+                            ? `You paid ${formatCurrency(expense.amount - userSplit.amount, expense.currency)} more than your share`
+                            : `You owe ${formatCurrency(userSplit.amount, expense.currency)}`
                           }
                         </p>
                       </div>
@@ -284,7 +329,7 @@ const Expenses: React.FC = () => {
                   <tr key={expense.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-r from-luxury-purple to-luxury-pink rounded-lg flex items-center justify-center">
+                        <div className="h-10 w-10 bg-linear-to-r from-yellow-600 to-yellow-700 rounded-lg flex items-center justify-center">
                           <CreditCard className="h-5 w-5 text-white" />
                         </div>
                         <div className="ml-4">
@@ -302,26 +347,37 @@ const Expenses: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-bold text-gray-900">
-                        {formatCurrency(expense.amount)}
+                        {formatCurrency(expense.amount, expense.currency)}
                       </div>
                       {userSplit && (
                         <div className={`text-xs ${
-                          isUserPayer ? 'text-emerald-600' : 'text-rose-600'
+                          isUserPayer ? 'text-green-600' : 'text-yellow-600'
                         }`}>
                           {isUserPayer ? 'You paid more' : 'You owe'}
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {paidByUser?.name}
+                      {isUserPayer ? 'You' : paidByUser?.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(expense.createdAt)}
+                      {new Date(expense.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-luxury-purple hover:text-luxury-pink transition-colors">
-                        View Details
-                      </button>
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleEdit(expense)}
+                          className="text-yellow-600 hover:text-yellow-700 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(expense.id)}
+                          className="text-red-600 hover:text-red-700 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -344,6 +400,19 @@ const Expenses: React.FC = () => {
           return true;
         })}
       />
+
+      {/* Edit Expense Modal */}
+      {selectedExpense && (
+        <EditExpenseModal
+          isOpen={isEditModalOpen}
+          onClose={handleCloseEditModal}
+          expense={selectedExpense}
+          users={users.filter(u => {
+            const group = groups.find(g => g.id === selectedExpense.groupId);
+            return group?.members.includes(u.id);
+          })}
+        />
+      )}
     </div>
   );
 };

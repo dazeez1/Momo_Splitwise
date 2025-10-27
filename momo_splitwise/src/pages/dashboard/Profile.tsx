@@ -55,7 +55,7 @@ const Profile: React.FC = () => {
         {!isEditing ? (
           <button
             onClick={() => setIsEditing(true)}
-            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-luxury-purple to-luxury-pink text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-linear-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             <User className="h-5 w-5" />
             <span>Edit Profile</span>
@@ -71,7 +71,7 @@ const Profile: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-luxury-purple to-luxury-pink text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-linear-to-r from-yellow-700 to-yellow-600 text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
             >
               <Save className="h-5 w-5" />
               <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
@@ -86,7 +86,7 @@ const Profile: React.FC = () => {
           {/* Avatar Section */}
           <div className="lg:col-span-1 flex flex-col items-center">
             <div className="relative">
-              <div className="w-32 h-32 bg-gradient-to-r from-luxury-purple to-luxury-pink rounded-full flex items-center justify-center">
+              <div className="w-32 h-32 bg-linear-to-r from-yellow-700 to-yellow-600 rounded-full flex items-center justify-center">
                 <User className="h-16 w-16 text-white" />
               </div>
               {isEditing && (
@@ -114,7 +114,7 @@ const Profile: React.FC = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
                   />
                 ) : (
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -133,7 +133,7 @@ const Profile: React.FC = () => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
                   />
                 ) : (
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -152,7 +152,7 @@ const Profile: React.FC = () => {
                     type="tel"
                     value={formData.phoneNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
                   />
                 ) : (
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -169,11 +169,11 @@ const Profile: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Statistics</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-luxury-purple">12</div>
+                    <div className="text-2xl font-bold text-yellow-700">12</div>
                     <div className="text-sm text-gray-600">Groups</div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-luxury-pink">47</div>
+                    <div className="text-2xl font-bold text-yellow-600">47</div>
                     <div className="text-sm text-gray-600">Expenses</div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">

@@ -1,68 +1,65 @@
-import React, { useState, useEffect } from "react";
-import { X, Users, DollarSign, FileText } from "lucide-react";
-import type { User } from "../../types";
-import { useApp } from "../../contexts/AppContext";
-import {
-  calculateEqualSplit,
-  calculatePercentageSplit,
-} from "../../utils/calculations";
+import React, { useState, useEffect } from 'react';
+import { X, Users, DollarSign, FileText } from 'lucide-react';
+import type { Expense, User } from '../../types';
+import { useApp } from '../../contexts/AppContext';
+import { calculateEqualSplit, calculatePercentageSplit } from '../../utils/calculations';
 
-interface ExpenseFormProps {
+interface EditExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  groupId: string;
+  expense: Expense;
   users: User[];
 }
 
-const ExpenseForm: React.FC<ExpenseFormProps> = ({
-  isOpen,
-  onClose,
-  groupId,
-  users,
-}) => {
-  const { addExpense, currentGroup } = useApp();
+const EditExpenseModal: React.FC<EditExpenseModalProps> = ({ isOpen, onClose, expense, users }) => {
+  const { updateExpense, groups } = useApp();
   const [formData, setFormData] = useState({
-    description: "",
-    amount: "",
-    paidBy: "",
-    splitType: "equal" as "equal" | "percentage" | "exact", // Changed from 'custom' to 'exact'
-    category: "food",
+    description: expense.description,
+    amount: expense.amount.toString(),
+    paidBy: expense.paidBy,
+    splitType: expense.splitType as 'equal' | 'percentage' | 'exact', // Changed from 'custom' to 'exact'
+    category: expense.category,
   });
-  const [splits, setSplits] = useState<
-    { userId: string; amount: string; percentage?: string }[]
-  >([]);
+  const [splits, setSplits] = useState<{ userId: string; amount: string; percentage?: string }[]>(
+    expense.splits.map(split => ({
+      userId: split.userId,
+      amount: split.amount.toString(),
+      percentage: split.percentage?.toString(),
+    }))
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const currentGroup = groups.find(g => g.id === expense.groupId);
+
   useEffect(() => {
-    if (users.length > 0 && isOpen) {
-      setFormData((prev) => ({
-        ...prev,
-        paidBy: users[0]?.id || "",
-        category: "food",
-      }));
-      initializeSplits();
+    if (isOpen) {
+      setFormData({
+        description: expense.description,
+        amount: expense.amount.toString(),
+        paidBy: expense.paidBy,
+        splitType: expense.splitType as 'equal' | 'percentage' | 'exact', // Changed from 'custom' to 'exact'
+        category: expense.category,
+      });
+      setSplits(
+        expense.splits.map(split => ({
+          userId: split.userId,
+          amount: split.amount.toString(),
+          percentage: split.percentage?.toString(),
+        }))
+      );
     }
-  }, [users, isOpen]);
+  }, [isOpen, expense]);
 
-  const initializeSplits = () => {
-    const initialSplits = users.map((user) => ({
-      userId: user.id,
-      amount: "",
-      percentage: (100 / users.length).toFixed(2).toString(),
-    }));
-    setSplits(initialSplits);
-  };
-
-  const handleSplitTypeChange = (type: "equal" | "percentage" | "exact") => { // Changed from 'custom' to 'exact'
-    setFormData((prev) => ({ ...prev, splitType: type }));
-
-    if (type === "equal" && formData.amount) {
+  const handleSplitTypeChange = (type: 'equal' | 'percentage' | 'exact') => { // Changed from 'custom' to 'exact'
+    setFormData(prev => ({ ...prev, splitType: type }));
+    
+    if (type === 'equal' && formData.amount) {
       updateEqualSplits();
-    } else if (type === "percentage") {
-      const newSplits = users.map((user) => ({
+    } else if (type === 'percentage') {
+      const newSplits = users.map(user => ({
         userId: user.id,
-        amount: "",
-        percentage: (100 / users.length).toFixed(2).toString(),
+        amount: '',
+        percentage: ((100 / users.length).toFixed(2)).toString(),
       }));
       setSplits(newSplits);
     }
@@ -70,7 +67,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   const updateEqualSplits = () => {
     if (!formData.amount) return;
-
+    
     const amount = parseFloat(formData.amount);
     if (isNaN(amount)) return;
 
@@ -78,15 +75,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     const newSplits = users.map((user, index) => ({
       userId: user.id,
       amount: equalShares[index].toString(),
-      percentage: (100 / users.length).toFixed(2).toString(),
+      percentage: ((100 / users.length).toFixed(2)).toString(),
     }));
     setSplits(newSplits);
   };
 
   const handleAmountChange = (amount: string) => {
-    setFormData((prev) => ({ ...prev, amount }));
-
-    if (formData.splitType === "equal" && amount) {
+    setFormData(prev => ({ ...prev, amount }));
+    
+    if (formData.splitType === 'equal' && amount) {
       updateEqualSplits();
     }
   };
@@ -94,60 +91,51 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   const handlePercentageChange = (index: number, percentage: string) => {
     const newSplits = [...splits];
     newSplits[index] = { ...newSplits[index], percentage };
-
+    
     if (formData.amount) {
       const amount = parseFloat(formData.amount);
       const percentageNum = parseFloat(percentage) || 0;
       newSplits[index].amount = ((amount * percentageNum) / 100).toFixed(2);
     }
-
+    
     setSplits(newSplits);
   };
 
   const handleCustomAmountChange = (index: number, amount: string) => {
     const newSplits = [...splits];
     newSplits[index] = { ...newSplits[index], amount };
-
+    
     if (formData.amount) {
       const totalAmount = parseFloat(formData.amount);
       const customAmount = parseFloat(amount) || 0;
-      const percentage =
-        totalAmount > 0 ? (customAmount / totalAmount) * 100 : 0;
+      const percentage = totalAmount > 0 ? (customAmount / totalAmount) * 100 : 0;
       newSplits[index].percentage = percentage.toFixed(2);
     }
-
+    
     setSplits(newSplits);
   };
 
   const validateForm = (): boolean => {
     if (!formData.description.trim()) {
-      alert("Please enter a description");
+      alert('Please enter a description');
       return false;
     }
-
+    
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      alert("Please enter a valid amount");
+      alert('Please enter a valid amount');
       return false;
     }
-
+    
     if (!formData.paidBy) {
-      alert("Please select who paid for this expense");
+      alert('Please select who paid for this expense');
       return false;
     }
 
-    // Validate splits
     const totalAmount = parseFloat(formData.amount);
-    const splitTotal = splits.reduce(
-      (sum, split) => sum + (parseFloat(split.amount) || 0),
-      0
-    );
-
+    const splitTotal = splits.reduce((sum, split) => sum + (parseFloat(split.amount) || 0), 0);
+    
     if (Math.abs(splitTotal - totalAmount) > 0.01) {
-      alert(
-        `Split amounts (${splitTotal.toFixed(
-          2
-        )}) must equal total amount (${totalAmount.toFixed(2)})`
-      );
+      alert(`Split amounts (${splitTotal.toFixed(2)}) must equal total amount (${totalAmount.toFixed(2)})`);
       return false;
     }
 
@@ -156,53 +144,37 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!validateForm()) return;
 
     setIsSubmitting(true);
 
     try {
-      const expenseData = {
+      const updatedExpense: Expense = {
+        ...expense,
         description: formData.description.trim(),
         amount: parseFloat(formData.amount),
-        currency: currentGroup?.currency || "RWF",
         paidBy: formData.paidBy,
         splitType: formData.splitType,
-        splits: splits.map((split) => ({
+        splits: splits.map(split => ({
           userId: split.userId,
           amount: parseFloat(split.amount) || 0,
-          percentage: split.percentage
-            ? parseFloat(split.percentage)
-            : undefined,
+          percentage: split.percentage ? parseFloat(split.percentage) : undefined,
         })),
-        groupId,
         category: formData.category,
       };
 
-      addExpense(expenseData);
+      updateExpense(updatedExpense);
       onClose();
-      resetForm();
     } catch (error) {
-      console.error("Error adding expense:", error);
-      alert("Failed to add expense. Please try again.");
+      console.error('Error updating expense:', error);
+      alert('Failed to update expense. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      description: "",
-      amount: "",
-      paidBy: users[0]?.id || "",
-      splitType: "equal",
-      category: "food",
-    });
-    initializeSplits();
-  };
-
   const handleClose = () => {
-    resetForm();
     onClose();
   };
 
@@ -212,9 +184,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Add New Expense
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-900">Edit Expense</h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -233,13 +203,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <input
               type="text"
               value={formData.description}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               placeholder="What was this expense for?"
               required
               disabled={isSubmitting}
@@ -250,7 +215,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
                 <DollarSign className="h-4 w-4" />
-                <span>Amount ({currentGroup?.currency || "RWF"}) *</span>
+                <span>Amount ({currentGroup?.currency || 'RWF'}) *</span>
               </label>
               <input
                 type="number"
@@ -258,7 +223,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 min="0.01"
                 value={formData.amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
                 placeholder="0.00"
                 required
                 disabled={isSubmitting}
@@ -272,33 +237,25 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               </label>
               <select
                 value={formData.paidBy}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, paidBy: e.target.value }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
+                onChange={(e) => setFormData(prev => ({ ...prev, paidBy: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
                 required
                 disabled={isSubmitting}
               >
                 <option value="">Select who paid</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.name}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
             <select
               value={formData.category}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, category: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent transition-all duration-200"
+              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               required
               disabled={isSubmitting}
             >
@@ -312,22 +269,18 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Split Type *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Split Type *</label>
             <div className="flex space-x-4">
-              {(["equal", "percentage", "exact"] as const).map((type) => ( // Changed from 'custom' to 'exact'
+              {(['equal', 'percentage', 'exact'] as const).map((type) => ( // Changed from 'custom' to 'exact'
                 <label key={type} className="flex items-center space-x-2">
                   <input
                     type="radio"
                     checked={formData.splitType === type}
                     onChange={() => handleSplitTypeChange(type)}
-                    className="text-yellow-700 focus:ring-yellow-700"
+                    className="text-yellow-600 focus:ring-yellow-600"
                     disabled={isSubmitting}
                   />
-                  <span className="text-sm text-gray-700 capitalize">
-                    {type}
-                  </span>
+                  <span className="text-sm text-gray-700 capitalize">{type}</span>
                 </label>
               ))}
             </div>
@@ -337,30 +290,22 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Split Details *
               <span className="ml-2 text-xs text-gray-500">
-                Total: {formData.amount || "0"}{" "}
-                {currentGroup?.currency || "RWF"}
+                Total: {formData.amount || '0'} {currentGroup?.currency || 'RWF'}
               </span>
             </label>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {splits.map((split, index) => {
-                const user = users.find((u) => u.id === split.userId);
+                const user = users.find(u => u.id === split.userId);
                 if (!user) return null;
 
                 return (
-                  <div
-                    key={split.userId}
-                    className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg"
-                  >
+                  <div key={split.userId} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-gray-900 truncate">
-                        {user.name}
-                      </span>
-                      <p className="text-xs text-gray-500 truncate">
-                        {user.phoneNumber}
-                      </p>
+                      <span className="text-sm font-medium text-gray-900 truncate">{user.name}</span>
+                      <p className="text-xs text-gray-500 truncate">{user.phoneNumber}</p>
                     </div>
-
-                    {formData.splitType === "percentage" && (
+                    
+                    {formData.splitType === 'percentage' && (
                       <div className="w-24">
                         <input
                           type="number"
@@ -368,41 +313,33 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                           min="0"
                           max="100"
                           value={split.percentage}
-                          onChange={(e) =>
-                            handlePercentageChange(index, e.target.value)
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-700 transition-all duration-200"
+                          onChange={(e) => handlePercentageChange(index, e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-600 transition-all duration-200"
                           placeholder="%"
                           disabled={isSubmitting}
                         />
                       </div>
                     )}
-
-                    {(formData.splitType === "exact" ||
-                      formData.splitType === "equal") && ( // Changed from 'custom' to 'exact'
+                    
+                    {(formData.splitType === 'exact' || formData.splitType === 'equal') && ( // Changed from 'custom' to 'exact'
                       <div className="w-32">
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           value={split.amount}
-                          onChange={(e) =>
-                            handleCustomAmountChange(index, e.target.value)
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-700 transition-all duration-200"
+                          onChange={(e) => handleCustomAmountChange(index, e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-600 transition-all duration-200"
                           placeholder="0.00"
-                          readOnly={formData.splitType === "equal"}
-                          disabled={
-                            isSubmitting || formData.splitType === "equal"
-                          }
+                          readOnly={formData.splitType === 'equal'}
+                          disabled={isSubmitting || formData.splitType === 'equal'}
                         />
                       </div>
                     )}
-
+                    
                     <div className="w-20 text-right">
                       <span className="text-sm text-gray-500">
-                        {split.percentage &&
-                          `${parseFloat(split.percentage).toFixed(1)}%`}
+                        {split.percentage && `${parseFloat(split.percentage).toFixed(1)}%`}
                       </span>
                     </div>
                   </div>
@@ -415,17 +352,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:border-transparent disabled:opacity-50 transition-all duration-200"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-yellow-700 to-yellow-600 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-700 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
+              className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-yellow-600 to-yellow-700 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Adding..." : "Add Expense"}
+              {isSubmitting ? 'Updating...' : 'Update Expense'}
             </button>
           </div>
         </form>
@@ -434,4 +371,4 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   );
 };
 
-export default ExpenseForm;
+export default EditExpenseModal;

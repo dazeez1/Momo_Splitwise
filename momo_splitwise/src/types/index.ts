@@ -3,33 +3,18 @@ export interface User {
   name: string;
   email: string;
   phoneNumber: string;
-  avatar?: string;
-  createdAt: string; // Changed from Date to string for serialization
+  createdAt: string; // Changed from Date to string
 }
 
 export interface Group {
   id: string;
   name: string;
   description: string;
-  currency: string;
-  color: string;
   members: string[];
   createdBy: string;
   createdAt: string; // Changed from Date to string
-  updatedAt: string; // Changed from Date to string
-}
-
-export interface Expense {
-  id: string;
-  description: string;
-  amount: number;
   currency: string;
-  paidBy: string;
-  splitType: 'equal' | 'percentage' | 'custom';
-  splits: ExpenseSplit[];
-  groupId: string;
-  category: string;
-  createdAt: string; // Changed from Date to string
+  color: string;
 }
 
 export interface ExpenseSplit {
@@ -38,11 +23,24 @@ export interface ExpenseSplit {
   percentage?: number;
 }
 
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  currency: string;
+  paidBy: string;
+  splitType: 'equal' | 'percentage' | 'exact'; // Changed from 'custom' to 'exact'
+  splits: ExpenseSplit[];
+  createdAt: string; // Changed from Date to string
+  groupId: string;
+  category: string;
+}
+
 export interface Balance {
   userId: string;
-  groupId: string;
   balance: number;
   currency: string;
+  groupId: string; // Added missing groupId
 }
 
 export interface Debt {
@@ -50,7 +48,7 @@ export interface Debt {
   to: string;
   amount: number;
   currency: string;
-  groupId?: string;
+  groupId?: string; // Added optional groupId
   groupName?: string;
 }
 
@@ -59,5 +57,13 @@ export interface RegistrationData {
   email: string;
   phoneNumber: string;
   password: string;
-  // createdAt is handled by the system
+  confirmPassword: string; // Added missing confirmPassword
+}
+
+export interface AppContextType {
+  // ... existing properties ...
+  simplifyDebts: (groupId: string) => Debt[];
+  getGroupExpenses: (groupId: string) => Expense[];
+  getExpenseReport: (groupId?: string) => any;
+  calculateBalances: (groupId: string) => Balance[];
 }

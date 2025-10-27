@@ -11,7 +11,7 @@ export const sampleUsers: (User & {
     phoneNumber: "+250712345678",
     password: "password123",
     confirmPassword: "password123",
-    createdAt: new Date("2025-01-01"),
+    createdAt: "2025-01-01T00:00:00.000Z", // Changed from Date to string
   },
   {
     id: "2",
@@ -20,7 +20,7 @@ export const sampleUsers: (User & {
     phoneNumber: "+250723456789",
     password: "password123",
     confirmPassword: "password123",
-    createdAt: new Date("2025-01-01"),
+    createdAt: "2025-01-01T00:00:00.000Z", // Changed from Date to string
   },
   {
     id: "3",
@@ -29,7 +29,7 @@ export const sampleUsers: (User & {
     phoneNumber: "+250734567890",
     password: "password123",
     confirmPassword: "password123",
-    createdAt: new Date("2025-01-01"),
+    createdAt: "2025-01-01T00:00:00.000Z", // Changed from Date to string
   },
 ];
 
@@ -40,8 +40,8 @@ export const sampleGroups: Group[] = [
     description: "Shared apartment expenses",
     members: ["1", "2", "3"],
     createdBy: "1",
-    createdAt: new Date("2025-01-15"),
-    currency: "KES",
+    createdAt: "2025-01-15T00:00:00.000Z", // Changed from Date to string
+    currency: "RWF",
     color: "bg-linear-to-br  from-yellow-700-400 to-yellow-700-400",
   },
   {
@@ -50,8 +50,8 @@ export const sampleGroups: Group[] = [
     description: "Mombasa weekend getaway",
     members: ["1", "2"],
     createdBy: "2",
-    createdAt: new Date("2025-02-01"),
-    currency: "KES",
+    createdAt: "2025-02-01T00:00:00.000Z", // Changed from Date to string
+    currency: "RWF",
     color: "bg-linear-to-br  from-gold-400 to-orange-400",
   },
 ];
@@ -61,7 +61,7 @@ export const sampleExpenses: Expense[] = [
     id: "1",
     description: "January Rent",
     amount: 45000,
-    currency: "KES",
+    currency: "RWF",
     paidBy: "1",
     splitType: "equal",
     splits: [
@@ -69,7 +69,7 @@ export const sampleExpenses: Expense[] = [
       { userId: "2", amount: 15000 },
       { userId: "3", amount: 15000 },
     ],
-    createdAt: new Date("2025-01-05"),
+    createdAt: "2025-01-05T00:00:00.000Z", // Changed from Date to string
     groupId: "1",
     category: "utilities",
   },
@@ -77,7 +77,7 @@ export const sampleExpenses: Expense[] = [
     id: "2",
     description: "Groceries",
     amount: 7500,
-    currency: "KES",
+    currency: "RWF",
     paidBy: "2",
     splitType: "equal",
     splits: [
@@ -85,7 +85,7 @@ export const sampleExpenses: Expense[] = [
       { userId: "2", amount: 2500 },
       { userId: "3", amount: 2500 },
     ],
-    createdAt: new Date("2025-01-12"),
+    createdAt: "2025-01-12T00:00:00.000Z", // Changed from Date to string
     groupId: "1",
     category: "food",
   },

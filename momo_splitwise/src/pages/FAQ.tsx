@@ -40,7 +40,7 @@ const FAQ: React.FC = () => {
     {
       question: "What currencies do you support?",
       answer:
-        "We support all major currencies with special focus on African currencies like KES, UGX, TZS, GHS, NGN, and ZAR. You can choose your preferred currency for each group.",
+        "We support all major currencies with special focus on African currencies like Rwf, UGX, TZS, GHS, NGN, and ZAR. You can choose your preferred currency for each group.",
     },
     {
       question: "How do I invite friends to my group?",
