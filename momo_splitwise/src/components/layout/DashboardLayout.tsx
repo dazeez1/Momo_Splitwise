@@ -15,6 +15,8 @@ import {
   Bell,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useSocket } from "../../contexts/SocketContext";
+import NotificationSidebar from "../NotificationSidebar";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -22,9 +24,11 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationSidebarOpen, setNotificationSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { unreadCount } = useSocket();
 
   const navigation = [
     {
@@ -136,14 +140,46 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   {item.name}
                 </Link>
               ))}
+
+              {/* Notifications button for mobile */}
+              <button
+                onClick={() => {
+                  setNotificationSidebarOpen(true);
+                  setSidebarOpen(false);
+                }}
+                className="group flex items-center px-2 py-2 text-base font-medium rounded-lg transition-all duration-200 text-gray-600 hover:bg-gray-50 hover:text-yellow-700 w-full"
+              >
+                <div className="relative mr-4">
+                  <Bell className="h-6 w-6 text-gray-400" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-600 rounded-full"></span>
+                  )}
+                </div>
+                Notifications
+                {unreadCount > 0 && (
+                  <span className="ml-auto px-2 py-0.5 bg-yellow-600 text-white text-xs font-medium rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
             </nav>
           </div>
           <div className="flex border-t border-gray-200 p-4">
             <div className="flex items-center">
               <div className="">
-                <div className="w-10 h-10 bg-linear-to-br  from-yellow-700 to-yellow-700 rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5 text-white" />
-                </div>
+                {user?.profilePicture ? (
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-yellow-600">
+                    <img
+                      src={user.profilePicture}
+                      alt={user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 bg-linear-to-br  from-yellow-700 to-yellow-700 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-white" />
+                  </div>
+                )}
               </div>
               <div className="ml-3">
                 <p className="text-base font-medium text-gray-700">
@@ -196,14 +232,43 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   {item.name}
                 </Link>
               ))}
+
+              {/* Notifications button under Settings */}
+              <button
+                onClick={() => setNotificationSidebarOpen(true)}
+                className="group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 text-gray-600 hover:bg-gray-50 hover:text-yellow-700 hover:shadow-md w-full"
+              >
+                <div className="relative mr-3">
+                  <Bell className="h-5 w-5 text-gray-400 group-hover:text-yellow-700" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-600 rounded-full"></span>
+                  )}
+                </div>
+                Notifications
+                {unreadCount > 0 && (
+                  <span className="ml-auto px-2 py-0.5 bg-yellow-600 text-white text-xs font-medium rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
             </nav>
           </div>
           <div className="flex border-t border-gray-200 p-4">
             <div className="flex items-center w-full">
               <div className="">
-                <div className="w-10 h-10 bg-linear-to-br  from-yellow-700 to-yellow-700 rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5 text-white" />
-                </div>
+                {user?.profilePicture ? (
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-yellow-600">
+                    <img
+                      src={user.profilePicture}
+                      alt={user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 bg-linear-to-br  from-yellow-700 to-yellow-700 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-white" />
+                  </div>
+                )}
               </div>
               <div className="ml-3 flex-1">
                 <p className="text-sm font-medium text-gray-700">
@@ -213,7 +278,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               </div>
               <button
                 onClick={handleLogout}
-                className="ml-3 p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="h-4 w-4" />
@@ -222,6 +287,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
         </div>
       </div>
+
+      {/* Notification Sidebar */}
+      <NotificationSidebar
+        isOpen={notificationSidebarOpen}
+        onClose={() => setNotificationSidebarOpen(false)}
+      />
 
       {/* Main content */}
       <div className="md:pl-64 flex flex-col flex-1">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Users, DollarSign, FileText } from "lucide-react";
 import type { User } from "../../types";
 import { useApp } from "../../contexts/AppContext";
+import { useToast } from "../../contexts/ToastContext";
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
@@ -21,6 +22,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   users,
 }) => {
   const { addExpense, currentGroup } = useApp();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     description: "",
     amount: "",
@@ -53,7 +55,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     setSplits(initialSplits);
   };
 
-  const handleSplitTypeChange = (type: "equal" | "percentage" | "exact") => { // Changed from 'custom' to 'exact'
+  const handleSplitTypeChange = (type: "equal" | "percentage" | "exact") => {
+    // Changed from 'custom' to 'exact'
     setFormData((prev) => ({ ...prev, splitType: type }));
 
     if (type === "equal" && formData.amount) {
@@ -121,17 +124,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   const validateForm = (): boolean => {
     if (!formData.description.trim()) {
-      alert("Please enter a description");
+      showToast("Please enter a description", "error");
       return false;
     }
 
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      alert("Please enter a valid amount");
+      showToast("Please enter a valid amount", "error");
       return false;
     }
 
     if (!formData.paidBy) {
-      alert("Please select who paid for this expense");
+      showToast("Please select who paid for this expense", "error");
       return false;
     }
 
@@ -143,10 +146,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     );
 
     if (Math.abs(splitTotal - totalAmount) > 0.01) {
-      alert(
-        `Split amounts (${splitTotal.toFixed(
-          2
-        )}) must equal total amount (${totalAmount.toFixed(2)})`
+      showToast(
+        `Split amounts must equal total amount (${totalAmount.toFixed(2)} ${
+          currentGroup?.currency || "RWF"
+        })`,
+        "error"
       );
       return false;
     }
@@ -179,12 +183,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         category: formData.category,
       };
 
-      addExpense(expenseData);
+      await addExpense(expenseData);
+      showToast("Expense added successfully", "success");
       onClose();
       resetForm();
     } catch (error) {
       console.error("Error adding expense:", error);
-      alert("Failed to add expense. Please try again.");
+      showToast("Failed to add expense", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -316,20 +321,24 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               Split Type *
             </label>
             <div className="flex space-x-4">
-              {(["equal", "percentage", "exact"] as const).map((type) => ( // Changed from 'custom' to 'exact'
-                <label key={type} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    checked={formData.splitType === type}
-                    onChange={() => handleSplitTypeChange(type)}
-                    className="text-yellow-700 focus:ring-yellow-700"
-                    disabled={isSubmitting}
-                  />
-                  <span className="text-sm text-gray-700 capitalize">
-                    {type}
-                  </span>
-                </label>
-              ))}
+              {(["equal", "percentage", "exact"] as const).map(
+                (
+                  type // Changed from 'custom' to 'exact'
+                ) => (
+                  <label key={type} className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      checked={formData.splitType === type}
+                      onChange={() => handleSplitTypeChange(type)}
+                      className="text-yellow-700 focus:ring-yellow-700"
+                      disabled={isSubmitting}
+                    />
+                    <span className="text-sm text-gray-700 capitalize">
+                      {type}
+                    </span>
+                  </label>
+                )
+              )}
             </div>
           </div>
 

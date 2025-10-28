@@ -1,27 +1,42 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import type { User, RegistrationData } from "../types";
-
-// Simple ID generator function
-const generateId = (): string => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-};
+import apiService from "../services/apiService";
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  error: string | null;
 }
 
 type AuthAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_USER"; payload: User | null }
   | { type: "LOGIN"; payload: User }
-  | { type: "LOGOUT" };
+  | { type: "LOGOUT" }
+  | { type: "SET_ERROR"; payload: string | null }
+  | { type: "CLEAR_ERROR" };
 
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  error: null,
+};
+
+// Helper function to transform MongoDB user to frontend format
+const transformUser = (user: any): User => {
+  if (!user) return user;
+  return {
+    id: user._id || user.id,
+    name: user.name,
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+    mobileMoneyNumber: user.mobileMoneyNumber,
+    mobileMoneyProvider: user.mobileMoneyProvider,
+    profilePicture: user.profilePicture,
+    createdAt: user.createdAt,
+  };
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
@@ -31,15 +46,18 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
     case "SET_USER":
       return {
         ...state,
-        user: action.payload,
+        user: action.payload ? transformUser(action.payload) : null,
         isAuthenticated: !!action.payload,
+        isLoading: false,
+        error: null,
       };
     case "LOGIN":
       return {
         ...state,
-        user: action.payload,
+        user: transformUser(action.payload),
         isAuthenticated: true,
         isLoading: false,
+        error: null,
       };
     case "LOGOUT":
       return {
@@ -47,6 +65,18 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        error: null,
+      };
+    case "SET_ERROR":
+      return {
+        ...state,
+        error: action.payload,
+        isLoading: false,
+      };
+    case "CLEAR_ERROR":
+      return {
+        ...state,
+        error: null,
       };
     default:
       return state;
@@ -54,10 +84,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 };
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (identifier: string, password: string) => Promise<boolean>;
   register: (userData: RegistrationData) => Promise<boolean>;
-  logout: () => void;
-  updateProfile: (userData: Partial<User>) => void;
+  logout: () => Promise<void>;
+  updateProfile: (userData: Partial<User>) => Promise<boolean>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,81 +98,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Check for saved user on mount
+  // Check for existing authentication on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem("momo-splitwise-user");
-    if (savedUser) {
+    const checkAuthStatus = async () => {
       try {
-        const userData = JSON.parse(savedUser);
-        dispatch({ type: "SET_USER", payload: userData });
+        if (apiService.isAuthenticated()) {
+          const user = await apiService.getCurrentUser();
+          dispatch({ type: "SET_USER", payload: user });
+        } else {
+          dispatch({ type: "SET_LOADING", payload: false });
+        }
       } catch (error) {
-        console.error("Error parsing saved user data:", error);
-        localStorage.removeItem("momo-splitwise-user");
+        console.error("Auth check failed:", error);
+        // Clear tokens if the auth check fails
+        apiService.clearTokensFromStorage();
+        dispatch({ type: "SET_LOADING", payload: false });
       }
-    }
-    dispatch({ type: "SET_LOADING", payload: false });
+    };
+
+    checkAuthStatus();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (
+    identifier: string,
+    password: string
+  ): Promise<boolean> => {
     dispatch({ type: "SET_LOADING", payload: true });
+    dispatch({ type: "CLEAR_ERROR" });
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // For demo purposes, create a mock user
-      const mockUser: User = {
-        id: generateId(),
-        name: email.split("@")[0] || "User",
-        email: email,
-        phoneNumber: "+250788000000",
-        createdAt: new Date().toISOString(),
-      };
-
-      localStorage.setItem("momo-splitwise-user", JSON.stringify(mockUser));
-      dispatch({ type: "LOGIN", payload: mockUser });
+      const response = await apiService.login({ identifier, password });
+      dispatch({ type: "LOGIN", payload: response.user });
       return true;
-    } catch (error) {
-      dispatch({ type: "SET_LOADING", payload: false });
+    } catch (error: any) {
+      console.error("Login error:", error);
+      dispatch({ type: "SET_ERROR", payload: error.message || "Login failed" });
       return false;
     }
   };
 
   const register = async (userData: RegistrationData): Promise<boolean> => {
     dispatch({ type: "SET_LOADING", payload: true });
+    dispatch({ type: "CLEAR_ERROR" });
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const newUser: User = {
-        id: generateId(),
+      const response = await apiService.register({
         name: userData.name,
         email: userData.email,
         phoneNumber: userData.phoneNumber,
-        createdAt: new Date().toISOString(),
-      };
+        password: userData.password,
+        confirmPassword: userData.confirmPassword,
+      });
 
-      localStorage.setItem("momo-splitwise-user", JSON.stringify(newUser));
-      dispatch({ type: "LOGIN", payload: newUser });
+      dispatch({ type: "LOGIN", payload: response.user });
       return true;
-    } catch (error) {
-      dispatch({ type: "SET_LOADING", payload: false });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      dispatch({
+        type: "SET_ERROR",
+        payload: error.message || "Registration failed",
+      });
       return false;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("momo-splitwise-user");
-    dispatch({ type: "LOGOUT" });
+  const logout = async (): Promise<void> => {
+    try {
+      await apiService.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      dispatch({ type: "LOGOUT" });
+    }
   };
 
-  const updateProfile = (userData: Partial<User>) => {
-    if (!state.user) return;
+  const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
+    if (!state.user) return false;
 
-    const updatedUser = { ...state.user, ...userData };
-    localStorage.setItem("momo-splitwise-user", JSON.stringify(updatedUser));
-    dispatch({ type: "SET_USER", payload: updatedUser });
+    dispatch({ type: "SET_LOADING", payload: true });
+    dispatch({ type: "CLEAR_ERROR" });
+
+    try {
+      const updatedUser = await apiService.updateProfile(userData);
+      console.log("Updated user from API:", updatedUser);
+      const transformedUser = transformUser(updatedUser);
+      console.log("Transformed user:", transformedUser);
+      dispatch({ type: "SET_USER", payload: transformedUser });
+      return true;
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      dispatch({
+        type: "SET_ERROR",
+        payload: error.message || "Profile update failed",
+      });
+      return false;
+    }
+  };
+
+  const clearError = () => {
+    dispatch({ type: "CLEAR_ERROR" });
   };
 
   const value: AuthContextType = {
@@ -150,6 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     register,
     logout,
     updateProfile,
+    clearError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

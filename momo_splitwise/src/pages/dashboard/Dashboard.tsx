@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Users,
@@ -15,53 +15,90 @@ import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatCurrency } from "../../utils/calculations";
 import type { Debt } from "../../types";
+import InvitationsList from "../../components/invitations/InvitationsList";
 
 const Dashboard: React.FC = () => {
   const { groups, expenses, simplifyDebts } = useApp();
   const { user } = useAuth();
 
-  const userGroups = groups.filter((group) =>
-    group.members.includes(user?.id || "")
+  // Memoize filtered groups and expenses for performance
+  const userGroups = useMemo(
+    () => groups.filter((group) => group.members.includes(user?.id || "")),
+    [groups, user?.id]
   );
 
-  const userExpenses = expenses.filter(
-    (expense) =>
-      expense.splits.some((split) => split.userId === user?.id) ||
-      expense.paidBy === user?.id
+  const userExpenses = useMemo(
+    () =>
+      expenses.filter(
+        (expense) =>
+          expense.splits.some((split) => split.userId === user?.id) ||
+          expense.paidBy === user?.id
+      ),
+    [expenses, user?.id]
   );
 
-  // Calculate total amount user has paid
-  const totalSpent = userExpenses.reduce((sum, expense) => {
-    if (expense.paidBy === user?.id) {
-      return sum + expense.amount;
-    }
-    return sum;
-  }, 0);
+  // Memoize calculations for performance
+  const { totalSpent, totalOwed, netBalance } = useMemo(() => {
+    const spent = userExpenses.reduce((sum, expense) => {
+      if (expense.paidBy === user?.id) {
+        return sum + expense.amount;
+      }
+      return sum;
+    }, 0);
 
-  // Calculate total amount user owes
-  const totalOwed = userExpenses.reduce((sum, expense) => {
-    const userSplit = expense.splits.find((split) => split.userId === user?.id);
-    return sum + (userSplit?.amount || 0);
-  }, 0);
+    const owed = userExpenses.reduce((sum, expense) => {
+      const userSplit = expense.splits.find(
+        (split) => split.userId === user?.id
+      );
+      return sum + (userSplit?.amount || 0);
+    }, 0);
 
-  // Calculate net balance (positive = you are owed, negative = you owe)
-  const netBalance = totalSpent - totalOwed;
+    const balance = spent - owed;
+    return { totalSpent: spent, totalOwed: owed, netBalance: balance };
+  }, [userExpenses, user?.id]);
+
+  // Memoize debts calculation
+  const allDebts = useMemo(() => {
+    const debtsMap = new Map<string, Debt[]>();
+    userGroups.forEach((group) => {
+      debtsMap.set(group.id, simplifyDebts(group.id));
+    });
+    return debtsMap;
+  }, [userGroups, simplifyDebts]);
 
   // Calculate total debts across all groups
-  const totalDebts = userGroups.reduce((sum, group) => {
-    const debts = simplifyDebts(group.id);
-    const userDebts = debts.filter((debt: Debt) => debt.from === user?.id); // Added type annotation
-    return sum + userDebts.reduce((debtSum: number, debt: Debt) => debtSum + debt.amount, 0); // Added type annotations
-  }, 0);
+  const totalDebts = useMemo(
+    () =>
+      userGroups.reduce((sum, group) => {
+        const debts = allDebts.get(group.id) || [];
+        const userDebts = debts.filter((debt: Debt) => debt.from === user?.id);
+        return (
+          sum +
+          userDebts.reduce(
+            (debtSum: number, debt: Debt) => debtSum + debt.amount,
+            0
+          )
+        );
+      }, 0),
+    [userGroups, allDebts, user?.id]
+  );
 
   // Calculate total amount owed to user
-  const totalOwedToUser = userGroups.reduce((sum, group) => {
-    const debts = simplifyDebts(group.id);
-    const userCredits = debts.filter((debt: Debt) => debt.to === user?.id); // Added type annotation
-    return (
-      sum + userCredits.reduce((creditSum: number, debt: Debt) => creditSum + debt.amount, 0) // Added type annotations
-    );
-  }, 0);
+  const totalOwedToUser = useMemo(
+    () =>
+      userGroups.reduce((sum, group) => {
+        const debts = allDebts.get(group.id) || [];
+        const userCredits = debts.filter((debt: Debt) => debt.to === user?.id);
+        return (
+          sum +
+          userCredits.reduce(
+            (creditSum: number, debt: Debt) => creditSum + debt.amount,
+            0
+          )
+        );
+      }, 0),
+    [userGroups, allDebts, user?.id]
+  );
 
   const stats = [
     {
@@ -87,8 +124,10 @@ const Dashboard: React.FC = () => {
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
       change: `${userGroups.reduce((count, group) => {
-        const debts = simplifyDebts(group.id);
-        return count + debts.filter((debt: Debt) => debt.to === user?.id).length; // Added type annotation
+        const debts = allDebts.get(group.id) || [];
+        return (
+          count + debts.filter((debt: Debt) => debt.to === user?.id).length
+        );
       }, 0)} people`,
     },
     {
@@ -98,8 +137,10 @@ const Dashboard: React.FC = () => {
       color: "text-rose-600",
       bgColor: "bg-rose-50",
       change: `${userGroups.reduce((count, group) => {
-        const debts = simplifyDebts(group.id);
-        return count + debts.filter((debt: Debt) => debt.from === user?.id).length; // Added type annotation
+        const debts = allDebts.get(group.id) || [];
+        return (
+          count + debts.filter((debt: Debt) => debt.from === user?.id).length
+        );
       }, 0)} people`,
     },
   ];
@@ -135,13 +176,15 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  // Recent activity (last 5 expenses involving the user)
-  const recentActivity = userExpenses
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    .slice(0, 5);
+  // Recent activity (last 5 expenses involving the user) - sorted by newest first
+  const recentActivity = useMemo(() => {
+    return [...userExpenses]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(0, 5);
+  }, [userExpenses]);
 
   return (
     <div className="space-y-8">
@@ -295,6 +338,11 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Group Invitations */}
+      <div className="w-full">
+        <InvitationsList onInvitationAction={() => window.location.reload()} />
       </div>
 
       {/* Recent Groups */}

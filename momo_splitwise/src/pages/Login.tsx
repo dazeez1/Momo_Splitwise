@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Users, Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -9,28 +9,23 @@ const Login: React.FC = () => {
     email: "",
     password: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const { login } = useAuth();
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    clearError();
 
-    try {
-      const success = await login(formData.email, formData.password);
-      if (success) {
-        navigate("/dashboard");
-      } else {
-        setError("Invalid email or password");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
+    const success = await login(formData.email, formData.password);
+    if (success) {
+      navigate("/dashboard");
     }
   };
 
@@ -143,10 +138,10 @@ const Login: React.FC = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-linear-to-br  from-yellow-700 to-yellow-700 hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
+              {isLoading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
               ) : (
                 <>

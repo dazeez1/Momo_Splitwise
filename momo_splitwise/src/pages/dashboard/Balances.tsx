@@ -1,34 +1,99 @@
-import React, { useState } from "react";
-import { Scale, ArrowRight, User, Users, Send } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Scale, ArrowRight, User, Users, Send, Loader2 } from "lucide-react";
 import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { formatCurrency } from "../../utils/calculations";
 import type { Debt } from "../../types";
 
 const Balances: React.FC = () => {
   const { user } = useAuth();
-  const { groups, users, simplifyDebts } = useApp();
+  const { groups, users, simplifyDebts, simplifyDebtsFromAPI } = useApp();
+  const { showToast } = useToast();
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const userGroups = groups.filter((group) =>
     group.members.includes(user?.id || "")
   );
 
   // Calculate debts for selected group or all groups
-  const debts =
-    selectedGroup === "all"
-      ? userGroups.flatMap((group) =>
-          simplifyDebts(group.id).map((debt: Debt) => ({ // Added type annotation
-            ...debt,
-            groupId: group.id,
-            groupName: group.name,
-          }))
-        )
-      : simplifyDebts(selectedGroup).map((debt: Debt) => ({ // Added type annotation
-          ...debt,
-          groupId: selectedGroup,
-          groupName: userGroups.find((g) => g.id === selectedGroup)?.name,
-        }));
+  useEffect(() => {
+    const calculateDebts = async () => {
+      setIsLoading(true);
+      try {
+        if (selectedGroup === "all") {
+          // For "all", use client-side calculation for efficiency
+          const allDebts = userGroups.flatMap((group) =>
+            simplifyDebts(group.id).map((debt: Debt) => ({
+              ...debt,
+              groupId: group.id,
+              groupName: group.name,
+            }))
+          );
+          setDebts(allDebts);
+        } else {
+          // For specific group, try API first
+          try {
+            const apiDebts = await simplifyDebtsFromAPI(selectedGroup);
+            const mappedDebts = apiDebts.map((debt: Debt) => ({
+              ...debt,
+              groupId: selectedGroup,
+              groupName: userGroups.find((g) => g.id === selectedGroup)?.name,
+            }));
+            setDebts(mappedDebts);
+          } catch (error) {
+            // Fallback to client-side
+            const clientDebts = simplifyDebts(selectedGroup).map(
+              (debt: Debt) => ({
+                ...debt,
+                groupId: selectedGroup,
+                groupName: userGroups.find((g) => g.id === selectedGroup)?.name,
+              })
+            );
+            setDebts(clientDebts);
+          }
+        }
+      } catch (error) {
+        console.error("Error calculating debts:", error);
+        showToast(
+          "Error loading balances. Using offline calculation.",
+          "warning"
+        );
+        // Final fallback
+        if (selectedGroup === "all") {
+          const fallbackDebts = userGroups.flatMap((group) =>
+            simplifyDebts(group.id).map((debt: Debt) => ({
+              ...debt,
+              groupId: group.id,
+              groupName: group.name,
+            }))
+          );
+          setDebts(fallbackDebts);
+        } else {
+          const fallbackDebts = simplifyDebts(selectedGroup).map(
+            (debt: Debt) => ({
+              ...debt,
+              groupId: selectedGroup,
+              groupName: userGroups.find((g) => g.id === selectedGroup)?.name,
+            })
+          );
+          setDebts(fallbackDebts);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    calculateDebts();
+  }, [
+    selectedGroup,
+    userGroups,
+    simplifyDebts,
+    simplifyDebtsFromAPI,
+    showToast,
+  ]);
 
   // Filter debts that involve the current user
   const userDebts = debts.filter(
@@ -47,22 +112,24 @@ const Balances: React.FC = () => {
 
   const handleSettleUp = (debt: Debt & { groupName?: string }) => {
     const creditorName = getUserName(debt.to);
-    alert(
+    showToast(
       `Initiating payment of ${formatCurrency(
         debt.amount,
         debt.currency
-      )} to ${creditorName} for ${debt.groupName || "group expenses"}`
+      )} to ${creditorName} for ${debt.groupName || "group expenses"}`,
+      "info"
     );
     // In a real app, this would open a payment modal or redirect to payments page
   };
 
   const handleRequestPayment = (debt: Debt & { groupName?: string }) => {
     const debtorName = getUserName(debt.from);
-    alert(
+    showToast(
       `Requesting payment of ${formatCurrency(
         debt.amount,
         debt.currency
-      )} from ${debtorName} for ${debt.groupName || "group expenses"}`
+      )} from ${debtorName} for ${debt.groupName || "group expenses"}`,
+      "info"
     );
     // In a real app, this would open a payment request modal
   };
@@ -85,7 +152,7 @@ const Balances: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <div className="flex items-center space-x-4">
           <Scale className="h-6 w-6 text-yellow-600" />
-          <div>
+          <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900">
               Simplify Debts
             </h3>
@@ -93,6 +160,9 @@ const Balances: React.FC = () => {
               Minimize the number of transactions needed to settle all debts
             </p>
           </div>
+          {isLoading && (
+            <Loader2 className="h-5 w-5 text-yellow-600 animate-spin" />
+          )}
         </div>
 
         <div className="mt-4">
@@ -102,7 +172,8 @@ const Balances: React.FC = () => {
           <select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
-            className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
+            disabled={isLoading}
+            className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="all">All Groups</option>
             {userGroups.map((group) => (
@@ -124,7 +195,10 @@ const Balances: React.FC = () => {
               <span className="ml-2 text-sm font-normal text-gray-500">
                 (
                 {formatCurrency(
-                  youOwe.reduce((sum: number, debt: Debt) => sum + debt.amount, 0), // Added type annotations
+                  youOwe.reduce(
+                    (sum: number, debt: Debt) => sum + debt.amount,
+                    0
+                  ), // Added type annotations
                   "RWF"
                 )}
                 )
@@ -132,39 +206,44 @@ const Balances: React.FC = () => {
             </h3>
           </div>
           <div className="divide-y divide-gray-100">
-            {youOwe.map((debt: Debt, index: number) => ( // Added type annotations
-              <div
-                key={index}
-                className="p-6 flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-12 h-12 bg-red-100 text-red-600 rounded-full">
-                    <User className="h-6 w-6" />
+            {youOwe.map(
+              (
+                debt: Debt,
+                index: number // Added type annotations
+              ) => (
+                <div
+                  key={index}
+                  className="p-6 flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-center w-12 h-12 bg-red-100 text-red-600 rounded-full">
+                      <User className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {getUserName(debt.to)}
+                      </p>
+                      <p className="text-sm text-gray-500">{debt.groupName}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {getUserName(debt.to)}
-                    </p>
-                    <p className="text-sm text-gray-500">{debt.groupName}</p>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-red-600">
+                        {formatCurrency(debt.amount, debt.currency)}
+                      </p>
+                      <p className="text-sm text-gray-500">Total owed</p>
+                    </div>
+                    <button
+                      onClick={() => handleSettleUp(debt)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-linear-to-r from-yellow-600 to-yellow-700 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all duration-200"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span>Pay</span>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-red-600">
-                      {formatCurrency(debt.amount, debt.currency)}
-                    </p>
-                    <p className="text-sm text-gray-500">Total owed</p>
-                  </div>
-                  <button
-                    onClick={() => handleSettleUp(debt)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-linear-to-r from-yellow-600 to-yellow-700 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all duration-200"
-                  >
-                    <Send className="h-4 w-4" />
-                    <span>Pay</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       )}
@@ -179,7 +258,10 @@ const Balances: React.FC = () => {
               <span className="ml-2 text-sm font-normal text-gray-500">
                 (
                 {formatCurrency(
-                  oweYou.reduce((sum: number, debt: Debt) => sum + debt.amount, 0), // Added type annotations
+                  oweYou.reduce(
+                    (sum: number, debt: Debt) => sum + debt.amount,
+                    0
+                  ), // Added type annotations
                   "RWF"
                 )}
                 )
@@ -187,39 +269,44 @@ const Balances: React.FC = () => {
             </h3>
           </div>
           <div className="divide-y divide-gray-100">
-            {oweYou.map((debt: Debt, index: number) => ( // Added type annotations
-              <div
-                key={index}
-                className="p-6 flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-full">
-                    <User className="h-6 w-6" />
+            {oweYou.map(
+              (
+                debt: Debt,
+                index: number // Added type annotations
+              ) => (
+                <div
+                  key={index}
+                  className="p-6 flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-full">
+                      <User className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {getUserName(debt.from)}
+                      </p>
+                      <p className="text-sm text-gray-500">{debt.groupName}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {getUserName(debt.from)}
-                    </p>
-                    <p className="text-sm text-gray-500">{debt.groupName}</p>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">
+                        {formatCurrency(debt.amount, debt.currency)}
+                      </p>
+                      <p className="text-sm text-gray-500">Total to receive</p>
+                    </div>
+                    <button
+                      onClick={() => handleRequestPayment(debt)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all duration-200"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span>Request</span>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-green-600">
-                      {formatCurrency(debt.amount, debt.currency)}
-                    </p>
-                    <p className="text-sm text-gray-500">Total to receive</p>
-                  </div>
-                  <button
-                    onClick={() => handleRequestPayment(debt)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all duration-200"
-                  >
-                    <Send className="h-4 w-4" />
-                    <span>Request</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       )}
@@ -249,7 +336,8 @@ const Balances: React.FC = () => {
             </span>
           </div>
           <div className="space-y-3">
-            {debts.map((debt: Debt, index: number) => { // Added type annotations
+            {debts.map((debt: Debt, index: number) => {
+              // Added type annotations
               const isUserInvolved =
                 debt.from === user?.id || debt.to === user?.id;
               return (

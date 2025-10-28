@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Smartphone, Mail, User, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import type { RegistrationData } from "../types";
 
 const Register: React.FC = () => {
-  const { register } = useAuth();
+  const { register, isLoading, error, clearError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState<RegistrationData>({
@@ -18,6 +17,13 @@ const Register: React.FC = () => {
     confirmPassword: "", // Added confirmPassword
   });
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -27,27 +33,43 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    clearError();
+
+    // Client-side validation
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
       return;
     }
 
     if (formData.password.length < 6) {
-      alert("Password must be at least 6 characters long");
       return;
     }
 
-    setIsLoading(true);
+    // Check password requirements
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(formData.password)) {
+      return;
+    }
 
-    try {
-      await register(formData);
+    // Check phone number format
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    const cleanPhone = formData.phoneNumber.replace(/\s/g, "");
+    if (!phoneRegex.test(cleanPhone)) {
+      return;
+    }
+
+    console.log("Submitting registration with:", formData);
+
+    // Clean phone number - remove spaces and ensure proper format
+    const cleanedFormData = {
+      ...formData,
+      phoneNumber: formData.phoneNumber.replace(/\s/g, ""), // Remove all spaces
+    };
+
+    console.log("Cleaned phone number:", cleanedFormData.phoneNumber);
+
+    const success = await register(cleanedFormData);
+    if (success) {
       navigate("/dashboard");
-    } catch (error) {
-      console.error("Registration failed:", error);
-      alert("Registration failed. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -71,10 +93,19 @@ const Register: React.FC = () => {
 
         {/* Form */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-4">
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Full Name
               </label>
               <div className="relative">
@@ -96,7 +127,10 @@ const Register: React.FC = () => {
 
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <div className="relative">
@@ -118,7 +152,10 @@ const Register: React.FC = () => {
 
             {/* Phone Number Field */}
             <div>
-              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="phoneNumber"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Phone Number
               </label>
               <div className="relative">
@@ -136,11 +173,17 @@ const Register: React.FC = () => {
                   placeholder="+250 123 456 789"
                 />
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Enter phone number with country code
+              </p>
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
@@ -169,11 +212,18 @@ const Register: React.FC = () => {
                   )}
                 </button>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Password must be at least 6 characters with uppercase,
+                lowercase, and number
+              </p>
             </div>
 
             {/* Confirm Password Field */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Confirm Password
               </label>
               <div className="relative">
