@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Users, FileText, User } from "lucide-react";
+import { X, Users, FileText, User, Plus } from "lucide-react";
 import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -22,7 +22,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { addGroup, users } = useApp();
+  const { addGroup, users, loadGroups } = useApp();
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
@@ -30,46 +30,80 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     currency: "Rwf",
     color: GROUP_COLORS[0],
   });
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [memberEmails, setMemberEmails] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    if (isOpen && user) {
-      // Auto-select current user
-      setSelectedMembers([user.id]);
+    if (isOpen) {
+      // Reset emails when modal opens
+      setMemberEmails([]);
+      setEmailInput("");
     }
-  }, [isOpen, user]);
+  }, [isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddEmail = () => {
+    if (!emailInput.trim()) return;
 
-    if (!formData.name.trim()) {
-      alert("Please enter a group name");
+    const email = emailInput.trim().toLowerCase();
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
       return;
     }
 
-    if (selectedMembers.length === 0) {
-      alert("Please add at least one member to the group");
+    // Check if email already added
+    if (memberEmails.includes(email)) {
+      setError("This email is already added");
+      return;
+    }
+
+    setMemberEmails([...memberEmails, email]);
+    setEmailInput("");
+    setError("");
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setMemberEmails(memberEmails.filter((e) => e !== email));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!formData.name.trim()) {
+      setError("Please enter a group name");
+      return;
+    }
+
+    if (memberEmails.length === 0) {
+      setError("Please add at least one member by email");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      addGroup({
+      console.log("Creating group with member emails:", memberEmails);
+      await addGroup({
         name: formData.name.trim(),
         description: formData.description.trim(),
-        members: selectedMembers,
-        createdBy: user?.id || "",
-        currency: formData.currency,
+        memberEmails: memberEmails, // Send emails instead of IDs
+        currency: formData.currency.toUpperCase(),
         color: formData.color,
       });
 
       onClose();
       resetForm();
-    } catch (error) {
+
+      // Reload groups list from API
+      loadGroups();
+    } catch (error: any) {
       console.error("Error creating group:", error);
-      alert("Failed to create group. Please try again.");
+      setError(error.message || "Failed to create group. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -82,20 +116,14 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
       currency: "Rwf",
       color: GROUP_COLORS[0],
     });
-    setSelectedMembers(user ? [user.id] : []);
+    setMemberEmails([]);
+    setEmailInput("");
+    setError("");
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
-  };
-
-  const toggleMember = (userId: string) => {
-    setSelectedMembers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
-    );
   };
 
   if (!isOpen) return null;
@@ -117,6 +145,28 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-800">{error}</p>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
               <Users className="h-4 w-4" />
@@ -128,7 +178,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               placeholder="e.g., Roommates, Weekend Trip, Chama Group"
               required
               disabled={isSubmitting}
@@ -149,7 +199,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 }))
               }
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               placeholder="What's this group for?"
               disabled={isSubmitting}
             />
@@ -184,7 +234,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, currency: e.target.value }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all duration-200"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               required
               disabled={isSubmitting}
             >
@@ -197,55 +247,72 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Add Members *
+              Add Members by Email *
               <span className="ml-2 text-xs text-gray-500">
-                {selectedMembers.length} member(s) selected
+                {memberEmails.length} member(s) added
               </span>
             </label>
-            <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
-              {users
-                .filter((u) => u.id !== user?.id)
-                .map((user) => (
-                  <label
-                    key={user.id}
-                    className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedMembers.includes(user.id)}
-                      onChange={() => toggleMember(user.id)}
-                      className="text-luxury-purple focus:ring-luxury-purple rounded"
-                      disabled={isSubmitting}
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        {user.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {user.phoneNumber}
-                      </p>
-                    </div>
-                  </label>
-                ))}
+
+            {/* Email Input */}
+            <div className="flex space-x-2 mb-3">
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(e) => {
+                  setEmailInput(e.target.value);
+                  setError("");
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddEmail();
+                  }
+                }}
+                placeholder="Enter email address"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent disabled:opacity-50"
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                onClick={handleAddEmail}
+                disabled={isSubmitting || !emailInput.trim()}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Add
+              </button>
             </div>
-            {users.filter((u) => u.id !== user?.id).length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No other users found. You can still create a group and invite
-                friends later!
-              </p>
+
+            {/* Added Emails List */}
+            {memberEmails.length > 0 && (
+              <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                {memberEmails.map((email) => (
+                  <div
+                    key={email}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-900">{email}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEmail(email)}
+                      disabled={isSubmitting}
+                      className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
 
-            {/* Show current user as auto-selected */}
+            {/* Current User Info */}
             {user && (
-              <div className="mt-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    disabled
-                    className="text-luxury-purple focus:ring-luxury-purple rounded"
-                  />
-                  <div className="flex-1">
+              <div className="mt-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-center space-x-2">
+                  <User className="h-4 w-4 text-purple-600" />
+                  <div>
                     <p className="text-sm font-medium text-gray-900">
                       {user.name} (You)
                     </p>
@@ -256,20 +323,26 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 </div>
               </div>
             )}
+
+            <p className="mt-2 text-xs text-gray-500">
+              💡 Add members by their email address. If they have an account,
+              they'll be added immediately. If not, they'll receive an
+              invitation.
+            </p>
           </div>
 
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent disabled:opacity-50 transition-all duration-200"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-luxury-purple to-luxury-pink border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
+              className="px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-yellow-600 to-yellow-700 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Creating..." : "Create Group"}

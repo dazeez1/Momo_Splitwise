@@ -2,18 +2,36 @@ import React, { useState, useEffect } from "react";
 import {
   BarChart3,
   Download,
+  FileText,
   Filter,
   Calendar,
   TrendingUp,
   PieChart,
 } from "lucide-react";
+import {
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatCurrency } from "../../utils/calculations";
+import { useToast } from "../../contexts/ToastContext";
 
 const Reports: React.FC = () => {
   const { groups, expenses, getExpenseReport } = useApp();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [selectedGroup, setSelectedGroup] = useState("all");
   const [dateRange, setDateRange] = useState("all");
   const [reportData, setReportData] = useState<any>(null);
@@ -83,7 +101,10 @@ const Reports: React.FC = () => {
   }, [expenses, selectedGroup, dateRange]);
 
   const exportToCSV = () => {
-    if (!reportData) return;
+    if (!reportData || reportData.expenses.length === 0) {
+      showToast("No data to export", "info");
+      return;
+    }
 
     const headers = [
       "Date",
@@ -116,6 +137,68 @@ const Reports: React.FC = () => {
     }.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    showToast("Report exported to CSV successfully", "success");
+  };
+
+  const exportToPDF = () => {
+    if (!reportData || reportData.expenses.length === 0) {
+      showToast("No data to export", "info");
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(18);
+    doc.text("Momo Splitwise Report", 14, 22);
+
+    // Report Info
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 32);
+    doc.text(`Total Expenses: ${reportData.totalExpenses}`, 14, 38);
+    doc.text(
+      `Total Amount: ${formatCurrency(reportData.totalAmount, "RWF")}`,
+      14,
+      44
+    );
+
+    // Summary data
+    const summaryData = [
+      ["Total Spent", formatCurrency(reportData.totalAmount, "RWF")],
+      ["Average Expense", formatCurrency(reportData.averageExpense, "RWF")],
+      [
+        "Number of Categories",
+        Object.keys(reportData.categoryBreakdown).length.toString(),
+      ],
+    ];
+
+    autoTable(doc, {
+      startY: 50,
+      head: [["Metric", "Value"]],
+      body: summaryData,
+      theme: "striped",
+    });
+
+    // Expense data
+    const expenseData = reportData.expenses.map((expense: any) => [
+      new Date(expense.createdAt).toLocaleDateString(),
+      expense.description,
+      formatCurrency(expense.amount, expense.currency),
+      expense.category,
+      groups.find((g) => g.id === expense.groupId)?.name || "Unknown",
+    ]);
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [["Date", "Description", "Amount", "Category", "Group"]],
+      body: expenseData,
+      theme: "grid",
+    });
+
+    doc.save(
+      `momo-splitwise-report-${new Date().toISOString().split("T")[0]}.pdf`
+    );
+    showToast("Report exported to PDF successfully", "success");
   };
 
   const getCategoryColor = (category: string) => {
@@ -161,13 +244,22 @@ const Reports: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={exportToCSV}
-          className="mt-4 sm:mt-0 inline-flex items-center space-x-2 px-6 py-3 bg-linear-to-r from-yellow-600 to-yellow-700 text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-        >
-          <Download className="h-5 w-5" />
-          <span>Export CSV</span>
-        </button>
+        <div className="mt-4 sm:mt-0 flex space-x-3">
+          <button
+            onClick={exportToCSV}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-white border border-yellow-600 text-yellow-600 font-semibold rounded-lg hover:bg-yellow-50 transition-all duration-200"
+          >
+            <Download className="h-5 w-5" />
+            <span>CSV</span>
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-linear-to-r from-yellow-600 to-yellow-700 text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <FileText className="h-5 w-5" />
+            <span>Export PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -264,87 +356,145 @@ const Reports: React.FC = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Category Breakdown */}
+        {/* Category Breakdown - Pie Chart */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <PieChart className="h-5 w-5 mr-2 text-yellow-600" />
             Expenses by Category
           </h3>
-          <div className="space-y-4">
-            {Object.entries(reportData.categoryBreakdown)
-              .sort(([, a], [, b]) => (b as number) - (a as number)) // Added type assertions
-              .map(([category, amount]) => {
-                const percentage =
-                  ((amount as number) / reportData.totalAmount) * 100;
-                return (
-                  <div key={category} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-700">
-                        {getCategoryName(category)}
-                      </span>
-                      <div className="text-right">
-                        <span className="text-gray-900 font-semibold">
-                          {formatCurrency(amount as number, "RWF")}
-                        </span>
-                        <span className="text-gray-500 text-xs ml-2">
-                          ({percentage.toFixed(1)}%)
+          {Object.keys(reportData.categoryBreakdown).length > 0 ? (
+            <div>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={Object.entries(reportData.categoryBreakdown)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
+                      .map(([category, amount]) => ({
+                        name: getCategoryName(category),
+                        value: amount as number,
+                        color: getCategoryColor(category).replace("bg-", ""),
+                      }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {Object.entries(reportData.categoryBreakdown).map(
+                      ([category], index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            getCategoryColor(category).includes("green")
+                              ? "#10b981"
+                              : getCategoryColor(category).includes("blue")
+                              ? "#3b82f6"
+                              : getCategoryColor(category).includes("yellow")
+                              ? "#eab308"
+                              : getCategoryColor(category).includes("purple")
+                              ? "#a855f7"
+                              : getCategoryColor(category).includes("pink")
+                              ? "#ec4899"
+                              : "#6b7280"
+                          }
+                        />
+                      )
+                    )}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any) => formatCurrency(value, "RWF")}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+              <div className="mt-4 space-y-2">
+                {Object.entries(reportData.categoryBreakdown)
+                  .sort(([, a], [, b]) => (b as number) - (a as number))
+                  .slice(0, 3)
+                  .map(([category, amount]) => {
+                    const percentage =
+                      ((amount as number) / reportData.totalAmount) * 100;
+                    return (
+                      <div
+                        key={category}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className={`w-3 h-3 rounded-full ${getCategoryColor(
+                              category
+                            )}`}
+                          />
+                          <span className="text-gray-700">
+                            {getCategoryName(category)}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-gray-900">
+                          {formatCurrency(amount as number, "RWF")} (
+                          {percentage.toFixed(1)}%)
                         </span>
                       </div>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-500 ${getCategoryColor(
-                          category
-                        )}`}
-                        style={{
-                          width: `${percentage}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
+                    );
+                  })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No category data
+            </div>
+          )}
         </div>
 
-        {/* Monthly Breakdown */}
+        {/* Monthly Breakdown - Bar Chart */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <BarChart3 className="h-5 w-5 mr-2 text-yellow-600" />
             Monthly Spending
           </h3>
-          <div className="space-y-4">
-            {Object.entries(reportData.monthlyBreakdown)
-              .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-              .map(([month, amount]) => {
-                const percentage =
-                  ((amount as number) /
-                    Math.max(
-                      ...(Object.values(
-                        reportData.monthlyBreakdown
-                      ) as number[])
-                    )) *
-                  100;
-                return (
-                  <div key={month} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-700">{month}</span>
-                      <span className="text-gray-900 font-semibold">
-                        {formatCurrency(amount as number, "RWF")}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-linear-to-r from-yellow-600 to-yellow-700 h-2 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${percentage}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
+          {Object.keys(reportData.monthlyBreakdown).length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={Object.entries(reportData.monthlyBreakdown)
+                  .sort(
+                    ([a], [b]) => new Date(a).getTime() - new Date(b).getTime()
+                  )
+                  .map(([month, amount]) => ({
+                    month,
+                    amount: amount as number,
+                  }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="month"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  style={{ fontSize: "12px" }}
+                />
+                <YAxis
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                />
+                <Tooltip
+                  formatter={(value: any) => formatCurrency(value, "RWF")}
+                  labelStyle={{ color: "#000" }}
+                />
+                <Legend />
+                <Bar
+                  dataKey="amount"
+                  fill="#eab308"
+                  name="Spending"
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No monthly data
+            </div>
+          )}
         </div>
       </div>
 

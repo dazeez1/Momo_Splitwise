@@ -1,37 +1,57 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Search, Users, Grid, List, MoreVertical, Edit, Trash2 } from 'lucide-react';
-import { useApp } from '../../contexts/AppContext';
-import { useAuth } from '../../contexts/AuthContext';
-import CreateGroupModal from '../../components/groups/CreateGroupModal';
-import EditGroupModal from '../../components/groups/EditGroupModal';
-import { formatCurrency } from '../../utils/calculations';
-import type { Group } from '../../types';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Plus,
+  Search,
+  Users,
+  Grid,
+  List,
+  MoreVertical,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import { useApp } from "../../contexts/AppContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import CreateGroupModal from "../../components/groups/CreateGroupModal";
+import EditGroupModal from "../../components/groups/EditGroupModal";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import { formatCurrency } from "../../utils/calculations";
+import type { Group } from "../../types";
 
 const Groups: React.FC = () => {
   const { groups, users, deleteGroup, getGroupExpenses } = useApp();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    groupId?: string;
+    groupName?: string;
+  }>({ isOpen: false });
 
-  const userGroups = groups.filter(group => 
-    group.members.includes(user?.id || '')
-  );
+  const userGroups = groups.filter((group) => {
+    const userId = user?.id || "";
+    const isMember = group.members.includes(userId);
+    return isMember;
+  });
 
-  const filteredGroups = userGroups.filter(group =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredGroups = userGroups.filter(
+    (group) =>
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getMemberNames = (memberIds: string[]) => {
     return memberIds
-      .map(id => users.find(u => u.id === id)?.name)
+      .map((id) => users.find((u) => u.id === id)?.name)
       .filter(Boolean)
-      .join(', ');
+      .join(", ");
   };
 
   const toggleDropdown = (groupId: string) => {
@@ -45,8 +65,27 @@ const Groups: React.FC = () => {
   };
 
   const handleDelete = (groupId: string) => {
-    deleteGroup(groupId);
-    setActiveDropdown(null);
+    const group = groups.find((g) => g.id === groupId);
+    setActiveDropdown(null); // Close dropdown
+    setDeleteDialog({
+      isOpen: true,
+      groupId,
+      groupName: group?.name || "this group",
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.groupId) return;
+
+    try {
+      await deleteGroup(deleteDialog.groupId || "");
+      showToast("Group deleted successfully", "success");
+      setDeleteDialog({ isOpen: false });
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      showToast("Failed to delete group", "error");
+      setDeleteDialog({ isOpen: false });
+    }
   };
 
   const handleCloseEditModal = () => {
@@ -56,9 +95,13 @@ const Groups: React.FC = () => {
 
   const getGroupStats = (groupId: string) => {
     const expenses = getGroupExpenses(groupId);
-    const totalAmount = expenses.reduce((sum: number, expense: any) => sum + expense.amount, 0); // Added type annotations
-    const memberCount = groups.find(g => g.id === groupId)?.members.length || 0;
-    
+    const totalAmount = expenses.reduce(
+      (sum: number, expense: any) => sum + expense.amount,
+      0
+    ); // Added type annotations
+    const memberCount =
+      groups.find((g) => g.id === groupId)?.members.length || 0;
+
     return { totalAmount, expenseCount: expenses.length, memberCount };
   };
 
@@ -67,7 +110,9 @@ const Groups: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-luxury font-bold text-gray-900">Groups</h1>
+          <h1 className="text-3xl font-luxury font-bold text-gray-900">
+            Groups
+          </h1>
           <p className="text-gray-600 mt-2">
             Manage your expense groups and track shared costs
           </p>
@@ -103,24 +148,24 @@ const Groups: React.FC = () => {
             <span className="text-sm text-gray-600">
               {filteredGroups.length} of {userGroups.length} groups
             </span>
-            
+
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setViewMode('grid')}
+                onClick={() => setViewMode("grid")}
                 className={`p-2 rounded-md transition-all duration-200 ${
-                  viewMode === 'grid'
-                    ? 'bg-white text-yellow-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                  viewMode === "grid"
+                    ? "bg-white text-yellow-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <Grid className="h-4 w-4" />
               </button>
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className={`p-2 rounded-md transition-all duration-200 ${
-                  viewMode === 'list'
-                    ? 'bg-white text-yellow-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                  viewMode === "list"
+                    ? "bg-white text-yellow-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <List className="h-4 w-4" />
@@ -135,13 +180,12 @@ const Groups: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
           <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {userGroups.length === 0 ? 'No groups yet' : 'No groups found'}
+            {userGroups.length === 0 ? "No groups yet" : "No groups found"}
           </h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">
-            {userGroups.length === 0 
+            {userGroups.length === 0
               ? "Create your first group to start tracking shared expenses with friends, roommates, or your savings group."
-              : "Try adjusting your search terms to find what you're looking for."
-            }
+              : "Try adjusting your search terms to find what you're looking for."}
           </p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
@@ -151,11 +195,11 @@ const Groups: React.FC = () => {
             <span>Create Your First Group</span>
           </button>
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredGroups.map((group) => {
             const stats = getGroupStats(group.id);
-            
+
             return (
               <div
                 key={group.id}
@@ -168,7 +212,9 @@ const Groups: React.FC = () => {
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">
                         {group.name}
                       </h3>
-                      <p className="text-gray-600 text-sm line-clamp-2">{group.description}</p>
+                      <p className="text-gray-600 text-sm line-clamp-2">
+                        {group.description}
+                      </p>
                     </div>
                     <div className="relative">
                       <button
@@ -177,17 +223,17 @@ const Groups: React.FC = () => {
                       >
                         <MoreVertical className="h-4 w-4" />
                       </button>
-                      
+
                       {activeDropdown === group.id && (
                         <div className="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                          <button 
+                          <button
                             onClick={() => handleEdit(group)}
                             className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           >
                             <Edit className="h-4 w-4" />
                             <span>Edit Group</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDelete(group.id)}
                             className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
                           >
@@ -206,7 +252,7 @@ const Groups: React.FC = () => {
                         {stats.memberCount} people
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Expenses</span>
                       <span className="font-medium text-gray-900">
@@ -223,7 +269,9 @@ const Groups: React.FC = () => {
 
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Currency</span>
-                      <span className="font-medium text-gray-900">{group.currency}</span>
+                      <span className="font-medium text-gray-900">
+                        {group.currency}
+                      </span>
                     </div>
                   </div>
 
@@ -265,12 +313,17 @@ const Groups: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredGroups.map((group) => {
                 const stats = getGroupStats(group.id);
-                
+
                 return (
-                  <tr key={group.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={group.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className={`w-3 h-8 ${group.color} rounded-lg mr-4`}></div>
+                        <div
+                          className={`w-3 h-8 ${group.color} rounded-lg mr-4`}
+                        ></div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {group.name}
@@ -282,7 +335,9 @@ const Groups: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{stats.memberCount} members</div>
+                      <div className="text-sm text-gray-900">
+                        {stats.memberCount} members
+                      </div>
                       <div className="text-sm text-gray-500 truncate max-w-xs">
                         {getMemberNames(group.members)}
                       </div>
@@ -331,6 +386,18 @@ const Groups: React.FC = () => {
           group={selectedGroup}
         />
       )}
+
+      {/* Delete Group Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        title="Delete Group"
+        message={`Are you sure you want to delete "${deleteDialog.groupName}"? This will permanently delete all expenses, balances, and member associations. This action cannot be undone.`}
+        confirmText="Delete Group"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteDialog({ isOpen: false })}
+        isDestructive={true}
+      />
     </div>
   );
 };

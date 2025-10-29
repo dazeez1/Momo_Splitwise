@@ -1,66 +1,115 @@
 import React, { useState } from "react";
-import { 
-  Settings as SettingsIcon, 
-  Bell, 
-  Shield, 
-  Globe, 
-  Moon, 
-  Sun, 
-  Save, 
-  RefreshCw, 
-  AlertTriangle, 
-  Download, 
+import {
+  Settings as SettingsIcon,
+  Bell,
+  Shield,
+  Globe,
+  Moon,
+  Sun,
+  Save,
+  RefreshCw,
+  AlertTriangle,
+  Download,
   Upload,
-  Database
+  Database,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useApp } from "../../contexts/AppContext";
+import { useToast } from "../../contexts/ToastContext";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const Settings: React.FC = () => {
   const { user, updateProfile } = useAuth();
   const { groups, expenses, users, resetToDemoData, clearAllData } = useApp();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [importConfirmDialog, setImportConfirmDialog] = useState<{
+    isOpen: boolean;
+    data: any | null;
+  }>({ isOpen: false, data: null });
 
+  // Initialize settings from user preferences or defaults
   const [settings, setSettings] = useState({
     // General Settings
-    language: "en",
-    currency: "RWF",
-    timezone: "Africa/Kigali",
+    language: user?.preferences?.language || "en",
+    currency: user?.preferences?.currency || "RWF",
+    timezone: user?.preferences?.timezone || "Africa/Kigali",
 
     // Notification Settings
-    emailNotifications: true,
-    pushNotifications: true,
-    paymentReminders: true,
-    expenseUpdates: true,
+    emailNotifications: user?.preferences?.notifications?.email !== false,
+    pushNotifications: user?.preferences?.notifications?.push !== false,
+    paymentReminders:
+      user?.preferences?.notifications?.paymentReminders !== false,
+    expenseUpdates: user?.preferences?.notifications?.expenseUpdates !== false,
 
     // Privacy Settings
-    profileVisibility: "friends",
-    expenseVisibility: "group",
-    allowFriendRequests: true,
+    profileVisibility:
+      user?.preferences?.privacy?.profileVisibility || "friends",
+    expenseVisibility: user?.preferences?.privacy?.expenseVisibility || "group",
+    allowFriendRequests:
+      user?.preferences?.privacy?.allowFriendRequests !== false,
 
     // Appearance
-    theme: "light",
-    compactView: false,
+    theme: localStorage.getItem("theme") || "light",
+    compactView: user?.preferences?.compactView || false,
   });
 
   const handleSaveSettings = async () => {
     setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    // In a real app, save to backend
+    try {
+      // Save preferences to backend
+      await updateProfile({
+        preferences: {
+          currency: settings.currency,
+          language: settings.language,
+          timezone: settings.timezone,
+          notifications: {
+            email: settings.emailNotifications,
+            push: settings.pushNotifications,
+            paymentReminders: settings.paymentReminders,
+            expenseUpdates: settings.expenseUpdates,
+          },
+          privacy: {
+            profileVisibility: settings.profileVisibility,
+            expenseVisibility: settings.expenseVisibility,
+            allowFriendRequests: settings.allowFriendRequests,
+          },
+          compactView: settings.compactView,
+        },
+      });
+
+      // Save theme to localStorage and apply it
+      localStorage.setItem("theme", settings.theme);
+      applyTheme(settings.theme);
+
+      showToast("Settings saved successfully", "success");
+    } catch (error: any) {
+      console.error("Error saving settings:", error);
+      showToast("Failed to save settings. Please try again.", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const applyTheme = (theme: string) => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   };
 
   const handleResetToDemo = async () => {
     setIsResetting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       resetToDemoData();
-      alert('Demo data has been loaded successfully!');
+      showToast("Demo data has been loaded successfully!", "success");
     } catch (error) {
-      alert('Failed to reset data. Please try again.');
+      showToast("Failed to reset data. Please try again.", "error");
     } finally {
       setIsResetting(false);
     }
@@ -69,11 +118,11 @@ const Settings: React.FC = () => {
   const handleClearAllData = async () => {
     setIsClearing(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       clearAllData();
-      alert('All data has been cleared successfully!');
+      showToast("All data has been cleared successfully!", "success");
     } catch (error) {
-      alert('Failed to clear data. Please try again.');
+      showToast("Failed to clear data. Please try again.", "error");
     } finally {
       setIsClearing(false);
     }
@@ -86,12 +135,16 @@ const Settings: React.FC = () => {
       groups,
       expenses,
     };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `momo-splitwise-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `momo-splitwise-backup-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -104,23 +157,21 @@ const Settings: React.FC = () => {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        
+
         if (data.users && data.groups && data.expenses) {
-          if (window.confirm('This will replace all your current data. Are you sure?')) {
-            localStorage.setItem('momo-splitwise-users', JSON.stringify(data.users));
-            localStorage.setItem('momo-splitwise-groups', JSON.stringify(data.groups));
-            localStorage.setItem('momo-splitwise-expenses', JSON.stringify(data.expenses));
-            window.location.reload();
-          }
+          setImportConfirmDialog({ isOpen: true, data });
         } else {
-          alert('Invalid backup file format.');
+          showToast("Invalid backup file format.", "error");
         }
       } catch (error) {
-        alert('Error reading backup file. Please make sure it\'s a valid JSON file.');
+        showToast(
+          "Error reading backup file. Please make sure it's a valid JSON file.",
+          "error"
+        );
       }
     };
     reader.readAsText(file);
-    event.target.value = '';
+    event.target.value = "";
   };
 
   const tabs = [
@@ -196,9 +247,15 @@ const Settings: React.FC = () => {
                     }
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
                   >
-                    <option value="Africa/Kigali">Central Africa Time (Kigali)</option>
-                    <option value="Africa/Nairobi">East Africa Time (Nairobi)</option>
-                    <option value="Africa/Lagos">West Africa Time (Lagos)</option>
+                    <option value="Africa/Kigali">
+                      Central Africa Time (Kigali)
+                    </option>
+                    <option value="Africa/Nairobi">
+                      East Africa Time (Nairobi)
+                    </option>
+                    <option value="Africa/Lagos">
+                      West Africa Time (Lagos)
+                    </option>
                     <option value="UTC">UTC</option>
                   </select>
                 </div>
@@ -369,9 +426,10 @@ const Settings: React.FC = () => {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={() =>
-                      setSettings((prev) => ({ ...prev, theme: "light" }))
-                    }
+                    onClick={() => {
+                      setSettings((prev) => ({ ...prev, theme: "light" }));
+                      applyTheme("light");
+                    }}
                     className={`p-4 border-2 rounded-lg text-left transition-all duration-200 ${
                       settings.theme === "light"
                         ? "border-yellow-600 bg-yellow-50"
@@ -386,9 +444,10 @@ const Settings: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={() =>
-                      setSettings((prev) => ({ ...prev, theme: "dark" }))
-                    }
+                    onClick={() => {
+                      setSettings((prev) => ({ ...prev, theme: "dark" }));
+                      applyTheme("dark");
+                    }}
                     className={`p-4 border-2 rounded-lg text-left transition-all duration-200 ${
                       settings.theme === "dark"
                         ? "border-yellow-600 bg-yellow-50"
@@ -438,18 +497,26 @@ const Settings: React.FC = () => {
           <div className="space-y-6">
             {/* Data Statistics */}
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Overview</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Data Overview
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-600">{users.length}</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {users.length}
+                  </p>
                   <p className="text-sm text-gray-600">Users</p>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">{groups.length}</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {groups.length}
+                  </p>
                   <p className="text-sm text-gray-600">Groups</p>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <p className="text-2xl font-bold text-purple-600">{expenses.length}</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {expenses.length}
+                  </p>
                   <p className="text-sm text-gray-600">Expenses</p>
                 </div>
               </div>
@@ -465,7 +532,9 @@ const Settings: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900">Export Data</h3>
-                    <p className="text-sm text-gray-500">Download a backup of all your data</p>
+                    <p className="text-sm text-gray-500">
+                      Download a backup of all your data
+                    </p>
                   </div>
                 </div>
                 <button
@@ -484,7 +553,9 @@ const Settings: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900">Import Data</h3>
-                    <p className="text-sm text-gray-500">Restore data from a backup file</p>
+                    <p className="text-sm text-gray-500">
+                      Restore data from a backup file
+                    </p>
                   </div>
                 </div>
                 <label className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
@@ -505,8 +576,12 @@ const Settings: React.FC = () => {
                     <RefreshCw className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">Reset to Demo Data</h3>
-                    <p className="text-sm text-gray-500">Load sample data for testing</p>
+                    <h3 className="font-medium text-gray-900">
+                      Reset to Demo Data
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Load sample data for testing
+                    </p>
                   </div>
                 </div>
                 <button
@@ -514,7 +589,7 @@ const Settings: React.FC = () => {
                   disabled={isResetting}
                   className="px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors"
                 >
-                  {isResetting ? 'Resetting...' : 'Reset'}
+                  {isResetting ? "Resetting..." : "Reset"}
                 </button>
               </div>
 
@@ -525,8 +600,12 @@ const Settings: React.FC = () => {
                     <AlertTriangle className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">Clear All Data</h3>
-                    <p className="text-sm text-gray-500">Permanently delete all your data</p>
+                    <h3 className="font-medium text-gray-900">
+                      Clear All Data
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Permanently delete all your data
+                    </p>
                   </div>
                 </div>
                 <button
@@ -534,14 +613,16 @@ const Settings: React.FC = () => {
                   disabled={isClearing}
                   className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
                 >
-                  {isClearing ? 'Clearing...' : 'Clear All'}
+                  {isClearing ? "Clearing..." : "Clear All"}
                 </button>
               </div>
             </div>
 
             {/* App Information */}
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">App Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                App Information
+              </h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">App Version</span>
@@ -553,7 +634,9 @@ const Settings: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Last Updated</span>
-                  <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                  <span className="font-medium">
+                    {new Date().toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             </div>
@@ -621,6 +704,34 @@ const Settings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={importConfirmDialog.isOpen}
+        title="Confirm Data Import"
+        message="This will replace all your current data. Are you sure you want to continue?"
+        confirmText="Yes, Import"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={() => {
+          if (importConfirmDialog.data) {
+            localStorage.setItem(
+              "momo-splitwise-users",
+              JSON.stringify(importConfirmDialog.data.users)
+            );
+            localStorage.setItem(
+              "momo-splitwise-groups",
+              JSON.stringify(importConfirmDialog.data.groups)
+            );
+            localStorage.setItem(
+              "momo-splitwise-expenses",
+              JSON.stringify(importConfirmDialog.data.expenses)
+            );
+            showToast("Data imported successfully! Reloading...", "success");
+            window.location.reload();
+          }
+        }}
+        onCancel={() => setImportConfirmDialog({ isOpen: false, data: null })}
+      />
     </div>
   );
 };

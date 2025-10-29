@@ -14,35 +14,38 @@ import {
 } from "lucide-react";
 import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { formatCurrency } from "../../utils/calculations";
 import SendPaymentModal from "../../components/payments/SendPaymentModal";
 import RequestPaymentModal from "../../components/payments/RequestPaymentModal";
 import type { Balance } from "../../types";
+import apiService from "../../services/apiService";
 
-interface PaymentRequest {
-  id: string;
-  fromUserId: string;
-  toUserId: string;
-  amount: number;
-  currency: string;
-  description: string;
-  status: "pending" | "completed" | "failed" | "cancelled";
-  createdAt: string;
-  completedAt?: string;
-  groupId: string;
-}
+// PaymentRequest interface removed - now using Payment from AppContext
 
 const Payments: React.FC = () => {
   const { user } = useAuth();
-  const { groups, users, calculateBalances, simplifyDebts } = useApp();
+  const {
+    groups,
+    users,
+    payments,
+    loadPayments,
+    calculateBalances,
+    simplifyDebts,
+  } = useApp();
+  const { showToast } = useToast();
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
-  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "send" | "history">(
     "overview"
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+
+  // Load payments on mount
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
 
   const userGroups = groups.filter((group) =>
     group.members.includes(user?.id || "")
@@ -89,109 +92,99 @@ const Payments: React.FC = () => {
       };
     });
 
-  // Mock payment requests (in a real app, this would come from an API)
-  useEffect(() => {
-    const mockRequests: PaymentRequest[] = [
-      {
-        id: "1",
-        fromUserId: "user2",
-        toUserId: user?.id || "",
-        amount: 25000,
-        currency: "RWF",
-        description: "Dinner at restaurant",
-        status: "pending",
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        groupId: "group1",
-      },
-      {
-        id: "2",
-        fromUserId: user?.id || "",
-        toUserId: "user3",
-        amount: 15000,
-        currency: "RWF",
-        description: "Uber rides",
-        status: "completed",
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        completedAt: new Date(
-          Date.now() - 4 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        groupId: "group2",
-      },
-      {
-        id: "3",
-        fromUserId: "user4",
-        toUserId: user?.id || "",
-        amount: 30000,
-        currency: "RWF",
-        description: "Monthly rent share",
-        status: "failed",
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        groupId: "group1",
-      },
-    ];
-    setPaymentRequests(mockRequests);
-  }, [user]);
+  // Transform payments from API to PaymentRequest format for display
+  const paymentRequests = payments
+    .filter((payment) => {
+      const matchesSearch = payment.description
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    })
+    .map((payment) => ({
+      id: payment.id,
+      fromUserId: payment.fromUserId,
+      toUserId: payment.toUserId,
+      amount: payment.amount,
+      currency: payment.currency,
+      description: payment.description || "Payment",
+      status: payment.status,
+      createdAt: payment.createdAt,
+      completedAt: payment.completedAt,
+      groupId: payment.groupId || "direct",
+    }));
 
-  const handleSendPayment = (
+  const handleSendPayment = async (
     toUserId: string,
     amount: number,
     description: string,
     groupId?: string
   ) => {
-    // In a real app, this would integrate with mobile money API
-    const newPayment: PaymentRequest = {
-      id: Date.now().toString(),
-      fromUserId: user?.id || "",
-      toUserId,
-      amount,
-      currency: "RWF",
-      description,
-      status: "completed",
-      createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-      groupId: groupId || "direct",
-    };
-
-    setPaymentRequests((prev) => [newPayment, ...prev]);
-    alert(`Payment of ${formatCurrency(amount, "RWF")} sent successfully!`);
+    // Reload payments from API
+    await loadPayments();
+    showToast(
+      `Payment of ${formatCurrency(amount, "RWF")} sent successfully!`,
+      "success"
+    );
   };
 
-  const handleRequestPayment = (
+  const handleRequestPayment = async (
     fromUserId: string,
     amount: number,
     description: string,
     groupId?: string
   ) => {
-    const newRequest: PaymentRequest = {
-      id: Date.now().toString(),
-      fromUserId,
-      toUserId: user?.id || "",
-      amount,
-      currency: "RWF",
-      description,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      groupId: groupId || "direct",
-    };
-
-    setPaymentRequests((prev) => [newRequest, ...prev]);
-    alert("Payment request sent! The recipient will be notified.");
+    // Reload payments from API
+    await loadPayments();
+    showToast(
+      "Payment request sent! The recipient will be notified.",
+      "success"
+    );
   };
 
-  const handleCancelRequest = (paymentId: string) => {
-    setPaymentRequests((prev) =>
-      prev.map((request) =>
-        request.id === paymentId
-          ? { ...request, status: "cancelled" as const }
-          : request
-      )
-    );
+  const handleCancelRequest = async (paymentId: string) => {
+    try {
+      await apiService.updatePaymentStatus(paymentId, "cancelled");
+      await loadPayments();
+      showToast("Payment request cancelled", "success");
+    } catch (error) {
+      console.error("Error cancelling payment:", error);
+      showToast("Failed to cancel payment request", "error");
+    }
+  };
+
+  const handleMarkSent = async (paymentId: string) => {
+    try {
+      await apiService.updatePaymentStatus(paymentId, "sent");
+      await loadPayments();
+      showToast(
+        "Payment marked as sent! Waiting for recipient confirmation.",
+        "success"
+      );
+    } catch (error) {
+      console.error("Error marking payment as sent:", error);
+      showToast("Failed to mark payment as sent", "error");
+    }
+  };
+
+  const handleMarkReceived = async (paymentId: string) => {
+    try {
+      await apiService.updatePaymentStatus(paymentId, "received");
+      await loadPayments();
+      showToast("Payment received and completed! Balances updated.", "success");
+    } catch (error) {
+      console.error("Error marking payment as received:", error);
+      showToast("Failed to mark payment as received", "error");
+    }
   };
 
   const getStatusIcon = (status: PaymentRequest["status"]) => {
     switch (status) {
       case "completed":
         return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case "sent":
+        return <Send className="h-5 w-5 text-blue-500" />;
+      case "received":
+        return <CheckCircle className="h-5 w-5 text-purple-500" />;
       case "pending":
         return <Clock className="h-5 w-5 text-yellow-500" />;
       case "failed":
@@ -205,6 +198,10 @@ const Payments: React.FC = () => {
     switch (status) {
       case "completed":
         return "text-green-700 bg-green-50 border-green-200";
+      case "sent":
+        return "text-blue-700 bg-blue-50 border-blue-200";
+      case "received":
+        return "text-purple-700 bg-purple-50 border-purple-200";
       case "pending":
         return "text-yellow-700 bg-yellow-50 border-yellow-200";
       case "failed":
@@ -780,14 +777,40 @@ const Payments: React.FC = () => {
                                 >
                                   {request.status}
                                 </span>
-                                {request.status === "pending" && isOutgoing && (
+                                {/* Sender actions */}
+                                {isOutgoing && request.status === "pending" && (
+                                  <>
+                                    <button
+                                      onClick={() => handleMarkSent(request.id)}
+                                      className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                                    >
+                                      ✓ Mark as Sent
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleCancelRequest(request.id)
+                                      }
+                                      className="px-2 py-1 text-xs text-red-600 hover:text-red-700"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                )}
+                                {isOutgoing && request.status === "sent" && (
+                                  <span className="text-xs text-blue-600 font-medium">
+                                    Waiting for confirmation...
+                                  </span>
+                                )}
+
+                                {/* Recipient actions */}
+                                {!isOutgoing && request.status === "sent" && (
                                   <button
                                     onClick={() =>
-                                      handleCancelRequest(request.id)
+                                      handleMarkReceived(request.id)
                                     }
-                                    className="text-xs text-red-600 hover:text-red-700"
+                                    className="px-3 py-1.5 text-xs font-semibold text-green-600 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors"
                                   >
-                                    Cancel
+                                    ✓ Confirm Received & Complete
                                   </button>
                                 )}
                               </div>

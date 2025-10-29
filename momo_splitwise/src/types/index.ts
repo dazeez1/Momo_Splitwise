@@ -3,6 +3,27 @@ export interface User {
   name: string;
   email: string;
   phoneNumber: string;
+  mobileMoneyNumber?: string;
+  mobileMoneyProvider?: string;
+  profilePicture?: string;
+  preferences?: {
+    currency?: string;
+    language?: string;
+    timezone?: string;
+    notifications?: {
+      email?: boolean;
+      sms?: boolean;
+      push?: boolean;
+      paymentReminders?: boolean;
+      expenseUpdates?: boolean;
+    };
+    privacy?: {
+      profileVisibility?: string;
+      expenseVisibility?: string;
+      allowFriendRequests?: boolean;
+    };
+    compactView?: boolean;
+  };
   createdAt: string; // Changed from Date to string
 }
 
@@ -29,11 +50,13 @@ export interface Expense {
   amount: number;
   currency: string;
   paidBy: string;
-  splitType: 'equal' | 'percentage' | 'exact'; // Changed from 'custom' to 'exact'
+  createdBy?: string; // Track who created the expense
+  splitType: "equal" | "percentage" | "exact"; // Changed from 'custom' to 'exact'
   splits: ExpenseSplit[];
   createdAt: string; // Changed from Date to string
   groupId: string;
   category: string;
+  isSettled?: boolean; // Computed: true when all debts from this expense are settled
 }
 
 export interface Balance {
@@ -52,6 +75,31 @@ export interface Debt {
   groupName?: string;
 }
 
+export interface Payment {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  groupId?: string;
+  type: "settlement" | "request" | "direct_payment";
+  status:
+    | "pending"
+    | "sent"
+    | "received"
+    | "completed"
+    | "failed"
+    | "cancelled";
+  paymentMethod?: "mobile_money" | "bank_transfer" | "cash" | "other";
+  fromMobileMoney?: string;
+  toMobileMoney?: string;
+  sentAt?: string;
+  receivedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+}
+
 export interface RegistrationData {
   name: string;
   email: string;
@@ -61,9 +109,40 @@ export interface RegistrationData {
 }
 
 export interface AppContextType {
-  // ... existing properties ...
+  // State
+  groups: Group[];
+  expenses: Expense[];
+  payments: Payment[];
+  users: User[];
+  currentGroup: Group | null;
+  balances: Balance[];
+
+  // Group methods
+  addGroup: (group: Omit<Group, "id" | "createdAt">) => Promise<Group>;
+  updateGroup: (group: Group) => Promise<Group>;
+  deleteGroup: (groupId: string) => Promise<void>;
+  loadGroups: () => Promise<void>;
+
+  // Expense methods
+  addExpense: (expense: Omit<Expense, "id" | "createdAt">) => Promise<Expense>;
+  updateExpense: (expense: Expense) => Promise<Expense>;
+  deleteExpense: (expenseId: string) => Promise<void>;
+  loadExpenses: () => Promise<void>;
+
+  // Payment methods
+  loadPayments: () => Promise<void>;
+
+  // User methods
+  addUser: (user: Omit<User, "id" | "createdAt">) => void;
+  updateUser: (user: User) => void;
+
+  // Other methods
+  setCurrentGroup: (group: Group | null) => void;
   simplifyDebts: (groupId: string) => Debt[];
   getGroupExpenses: (groupId: string) => Expense[];
   getExpenseReport: (groupId?: string) => any;
   calculateBalances: (groupId: string) => Balance[];
+  resetToDemoData: () => void;
+  clearAllData: () => void;
+  syncAuthUser: (user: User) => void;
 }

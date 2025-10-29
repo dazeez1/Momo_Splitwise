@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { X, Download, User, Wallet } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { useApp } from "../../contexts/AppContext";
 import { formatCurrency } from "../../utils/calculations";
+import apiService from "../../services/apiService";
 
 interface RequestPaymentModalProps {
   isOpen: boolean;
@@ -24,6 +27,8 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
   peopleOweYou,
 }) => {
   const { user } = useAuth();
+  const { showToast } = useToast();
+  const { groups } = useApp();
   const [formData, setFormData] = useState({
     fromUserId: "",
     amount: "",
@@ -35,22 +40,41 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (peopleOweYou.length === 0) {
+      showToast("No one owes you money to request payment from", "info");
+      return;
+    }
+
     if (!formData.fromUserId || !formData.amount || !formData.description) {
-      alert("Please fill in all required fields");
+      showToast("Please fill in all required fields", "error");
       return;
     }
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid amount");
+      showToast("Please enter a valid amount", "error");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      // Determine group currency
+      const group = groups.find((g) => g.id === formData.groupId);
+      const currency = group?.currency || "RWF";
 
+      // Create payment request via API (user requests payment FROM another user)
+      await apiService.createPayment({
+        toUserId: formData.fromUserId, // Person who should pay
+        amount,
+        currency,
+        description: formData.description,
+        groupId: formData.groupId || undefined,
+        type: "request",
+        paymentMethod: "mobile_money",
+      });
+
+      showToast("Payment request sent successfully", "success");
       onRequestPayment(
         formData.fromUserId,
         amount,
@@ -61,7 +85,7 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
       setFormData({ fromUserId: "", amount: "", description: "", groupId: "" });
     } catch (error) {
       console.error("Error requesting payment:", error);
-      alert("Failed to send payment request. Please try again.");
+      showToast("Failed to send payment request. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -104,18 +128,18 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
           {peopleOweYou.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quick Select from Credits
+                Quick Select from Who Owes You
               </label>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
+              <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50">
                 {peopleOweYou.map((credit, index) => (
                   <button
                     key={index}
                     type="button"
                     onClick={() => quickSelectCredit(credit)}
-                    className="w-full flex items-center justify-between p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="w-full flex items-center justify-between p-3 text-left bg-white rounded-lg hover:bg-yellow-50 hover:border-yellow-300 border border-transparent transition-all duration-200"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                         <User className="h-4 w-4" />
                       </div>
                       <div>
@@ -131,30 +155,57 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                💡 Tip: Click any credit above to auto-fill the form
+              </p>
             </div>
           )}
 
           <div>
             <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
               <User className="h-4 w-4" />
-              <span>From *</span>
+              <span>Request From *</span>
             </label>
-            <select
-              value={formData.fromUserId}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, fromUserId: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
-              required
-              disabled={isSubmitting}
-            >
-              <option value="">Select who should pay</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
+            {peopleOweYou.length === 0 ? (
+              <div className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800 font-medium">
+                  💰 No one owes you money yet!
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  All your balances are settled. There's no payment to request.
+                </p>
+              </div>
+            ) : (
+              <select
+                value={formData.fromUserId}
+                onChange={(e) => {
+                  const selectedCredit = peopleOweYou.find(
+                    (c) => c.user?.id === e.target.value
+                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    fromUserId: e.target.value,
+                    amount: selectedCredit?.amount.toString() || prev.amount,
+                    description:
+                      `Payment request from ${selectedCredit?.user?.name} for ${selectedCredit?.group}` ||
+                      prev.description,
+                    groupId: selectedCredit?.groupId || prev.groupId,
+                  }));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
+                required
+                disabled={isSubmitting}
+              >
+                <option value="">Select who should pay</option>
+                {peopleOweYou.map((credit) => (
+                  <option key={credit.user?.id} value={credit.user?.id}>
+                    {credit.user?.name} (
+                    {formatCurrency(credit.amount, credit.currency)} -{" "}
+                    {credit.group})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -220,9 +271,13 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
             <button
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-yellow-600 to-yellow-700 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
-              disabled={isSubmitting}
+              disabled={isSubmitting || peopleOweYou.length === 0}
             >
-              {isSubmitting ? "Sending..." : "Send Request"}
+              {isSubmitting
+                ? "Sending..."
+                : peopleOweYou.length === 0
+                ? "Nothing to request"
+                : "Send Request"}
             </button>
           </div>
         </form>

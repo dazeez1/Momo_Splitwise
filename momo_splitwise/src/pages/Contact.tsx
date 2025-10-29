@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { Mail, Phone, MapPin, Send, Clock } from "lucide-react";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
+import { useToast } from "../contexts/ToastContext";
 
 const Contact: React.FC = () => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -14,7 +16,10 @@ const Contact: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle form submission
-    alert("Thank you for your message! We will get back to you soon.");
+    showToast(
+      "Thank you for your message! We will get back to you soon.",
+      "success"
+    );
     setFormData({ name: "", email: "", subject: "", message: "" });
   };
 
