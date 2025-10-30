@@ -1,0 +1,59 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [frontend, backend]
+
+    steps:
+      # 1. Checkout the code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # 3. Cache node_modules
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: ${{ matrix.service }}/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('${{ matrix.service }}/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # 4. Install dependencies
+      - name: Install dependencies
+        run: npm install
+        working-directory: ${{ matrix.service }}
+
+      # 5. Lint
+      - name: Run ESLint
+        run: npm run lint
+        working-directory: ${{ matrix.service }}
+
+      # 6. Run tests
+      - name: Run tests
+        run: npm test
+        working-directory: ${{ matrix.service }}
+
+      # 7. Build
+      - name: Build project
+        run: |
+          if [ "${{ matrix.service }}" == "frontend" ]; then
+            npm run build
+          fi
+        working-directory: frontend
