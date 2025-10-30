@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: momo_backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    env_file:
+      - ./backend/.env.example
+    environment:
+      # Override the database URL to use the mongo container
+      - MONGODB_URL=mongodb://mongo:27017/momo_splitwise
+    command: npm start
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: momo_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_BACKEND_URL=http://backend:5000  # Use service name for inter-container networking
+    command: npx vite preview --port 5173 --host 0.0.0.0
+    depends_on:
+      - backend
+
+  mongo:
+    image: mongo:6.0
+    container_name: momo_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

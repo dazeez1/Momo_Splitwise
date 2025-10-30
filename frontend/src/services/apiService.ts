@@ -88,7 +88,7 @@ class ApiService {
           );
         }
 
-        data = { message: text || "Request failed" };
+        data = { message: text || "Request failed" } as unknown as T;
       }
 
       if (!response.ok) {
@@ -114,7 +114,7 @@ class ApiService {
               if (!retryResponse.ok) {
                 throw new Error(retryText || "Request failed");
               }
-              return { message: retryText };
+              return { message: retryText } as unknown as T;
             }
           }
         }
@@ -330,7 +330,9 @@ class ApiService {
   /**
    * Get all users
    */
-  async getUsers(): Promise<{ users: any[] }> {
+  async getUsers(): Promise<{
+    data: any; users: any[] 
+}> {
     return this.makeRequest("/users");
   }
 
@@ -339,7 +341,9 @@ class ApiService {
   /**
    * Get all groups for the current user
    */
-  async getGroups(): Promise<{ groups: any[] }> {
+  async getGroups(): Promise<{
+    data: any; groups: any[] 
+}> {
     return this.makeRequest("/groups");
   }
 
@@ -359,7 +363,9 @@ class ApiService {
     members: string[];
     currency?: string;
     color?: string;
-  }): Promise<{ group: any }> {
+  }): Promise<{
+    data: any; group: any 
+}> {
     return this.makeRequest("/groups", {
       method: "POST",
       body: JSON.stringify(groupData),
@@ -438,7 +444,9 @@ class ApiService {
   /**
    * Get all expenses for the current user
    */
-  async getExpenses(): Promise<{ expenses: any[] }> {
+  async getExpenses(): Promise<{
+    data: any; expenses: any[] 
+}> {
     return this.makeRequest("/expenses");
   }
 
@@ -468,7 +476,9 @@ class ApiService {
     splitType: "equal" | "percentage" | "exact";
     splits: Array<{ userId: string; amount?: number; percentage?: number }>;
     paidBy?: string;
-  }): Promise<{ expense: any }> {
+  }): Promise<{
+    data: any; expense: any 
+}> {
     return this.makeRequest("/expenses", {
       method: "POST",
       body: JSON.stringify(expenseData),
@@ -489,7 +499,9 @@ class ApiService {
       splits?: Array<{ userId: string; amount?: number; percentage?: number }>;
       paidBy?: string;
     }
-  ): Promise<{ expense: any }> {
+  ): Promise<{
+    data: any; expense: any 
+}> {
     return this.makeRequest(`/expenses/${expenseId}`, {
       method: "PUT",
       body: JSON.stringify(expenseData),
@@ -510,7 +522,9 @@ class ApiService {
   /**
    * Get all payments for the current user
    */
-  async getPayments(): Promise<{ payments: any[] }> {
+  async getPayments(): Promise<{
+    data: any; payments: any[] 
+}> {
     return this.makeRequest("/payments");
   }
 
@@ -573,7 +587,7 @@ class ApiService {
    * Get balances for a specific group
    */
   async getGroupBalances(groupId: string): Promise<{ balances: any[] }> {
-    const response = await this.makeRequest(`/balances/group/${groupId}`);
+    const response = await this.makeRequest<any>(`/balances/group/${groupId}`);
     return response.data || response;
   }
 
@@ -581,7 +595,7 @@ class ApiService {
    * Get simplified debts for a specific group
    */
   async getSimplifiedDebts(groupId: string): Promise<{ debts: any[] }> {
-    const response = await this.makeRequest(
+    const response = await this.makeRequest<any>(
       `/balances/group/${groupId}/simplify`
     );
     return response.data || response;
