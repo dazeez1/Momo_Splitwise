@@ -27,7 +27,7 @@ export interface User {
   createdAt: string; // Changed from Date to string
 }
 
-export interface Group {
+export interface APIGroup {
   id: string;
   name: string;
   description: string;
@@ -111,16 +111,16 @@ export interface RegistrationData {
 
 export interface AppContextType {
   // State
-  groups: Group[];
+  groups: APIGroup[];
   expenses: Expense[];
   payments: Payment[];
   users: User[];
-  currentGroup: Group | null;
+  currentGroup: APIGroup | null;
   balances: Balance[];
 
   // Group methods
-  addGroup: (group: Omit<Group, "id" | "createdAt">) => Promise<Group>;
-  updateGroup: (group: Group) => Promise<Group>;
+  addGroup: (group: Omit<APIGroup, "id" | "createdAt">) => Promise<APIGroup>;
+  updateGroup: (group: APIGroup) => Promise<APIGroup>;
   deleteGroup: (groupId: string) => Promise<void>;
   loadGroups: () => Promise<void>;
 
@@ -138,10 +138,10 @@ export interface AppContextType {
   updateUser: (user: User) => void;
 
   // Other methods
-  setCurrentGroup: (group: Group | null) => void;
+  setCurrentGroup: (group: APIGroup | null) => void;
   simplifyDebts: (groupId: string) => Debt[];
   getGroupExpenses: (groupId: string) => Expense[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   getExpenseReport: (groupId?: string) => any;
   calculateBalances: (groupId: string) => Balance[];
   resetToDemoData: () => void;

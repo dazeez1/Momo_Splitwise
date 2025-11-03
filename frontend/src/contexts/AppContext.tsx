@@ -1,5 +1,17 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import type { Group, Expense, User, Balance, Debt, Payment } from "../types";
+import type { Expense, User, Balance, Debt, Payment } from "../types";
+
+interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  currency: string;
+  color?: string;
+  members: string[];
+  createdBy: string;
+  createdAt: string;
+}
+
 import apiService from "../services/apiService";
 // REMOVED: import { useAuth } from './AuthContext';
 
@@ -194,16 +206,17 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
     case "SET_USERS":
       return { ...state, users: action.payload };
-    case "ADD_USER":
-      // Avoid duplicate users
-      const userExists = state.users.find(
-        (user) =>
-          user.id === action.payload.id || user.email === action.payload.email
-      );
-      if (userExists) {
-        return state;
-      }
-      return { ...state, users: [...state.users, action.payload] };
+case "ADD_USER": {
+  const userExists = state.users.find(
+    (user) =>
+      user.id === action.payload.id || user.email === action.payload.email
+  );
+  if (userExists) {
+    return state;
+  }
+  return { ...state, users: [...state.users, action.payload] };
+}
+
     case "UPDATE_USER":
       return {
         ...state,
@@ -245,6 +258,8 @@ interface AppContextType extends AppState {
   updateGroup: (group: Group) => Promise<Group>;
   deleteGroup: (groupId: string) => Promise<void>;
   loadGroups: () => Promise<void>;
+  loadExpenses: () => Promise<void>;
+  loadPayments: () => Promise<void>;
   addExpense: (expense: Omit<Expense, "id" | "createdAt">) => Promise<Expense>;
   updateExpense: (expense: Expense) => Promise<Expense>;
   deleteExpense: (expenseId: string) => Promise<void>;
@@ -366,20 +381,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       const payments = response.data?.payments || response.payments || [];
 
       // Transform MongoDB payments to frontend format
-      const transformedPayments: Payment[] = payments.map((payment: any) => ({
-        id: payment._id,
-        fromUserId: payment.fromUserId?._id || payment.fromUserId,
-        toUserId: payment.toUserId?._id || payment.toUserId,
-        amount: payment.amount,
-        currency: payment.currency,
-        description: payment.description,
-        groupId: payment.groupId?._id || payment.groupId,
-        type: payment.type,
-        status: payment.status,
-        paymentMethod: payment.paymentMethod,
-        completedAt: payment.completedAt,
-        createdAt: payment.createdAt,
-      }));
+      const transformedPayments: Payment[] = payments.map((payment: any) => {
+        return ({
+          id: payment._id,
+          fromUserId: payment.fromUserId?._id || payment.fromUserId,
+          toUserId: payment.toUserId?._id || payment.toUserId,
+          amount: payment.amount,
+          currency: payment.currency,
+          description: payment.description,
+          groupId: payment.groupId?._id || payment.groupId,
+          type: payment.type,
+          status: payment.status,
+          paymentMethod: payment.paymentMethod,
+          completedAt: payment.completedAt,
+          createdAt: payment.createdAt,
+        });
+      });
 
       dispatch({ type: "SET_PAYMENTS", payload: transformedPayments });
     } catch (error) {
@@ -422,7 +439,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     try {
       console.log("Sending group data to API:", groupData);
-      const response = await apiService.createGroup(groupData);
+      const apiGroupData = {
+        name: groupData.name,
+        description: groupData.description,
+        members: groupData.members,
+        currency: groupData.currency,
+        color: groupData.color
+      };
+      const response = await apiService.createGroup(apiGroupData);
 
       // Handle both response formats: {data: {group}} or {group}
       const group = response.data?.group || response.group;
@@ -633,7 +657,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     const group = state.groups.find((g) => g.id === groupId);
     if (!group) return [];
 
-    group.members.forEach((memberId) => {
+    group.members.forEach((memberId: string | number) => {
       balances[memberId] = 0;
     });
 
@@ -654,7 +678,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       const paymentGroupId =
         typeof payment.groupId === "string"
           ? payment.groupId
-          : payment.groupId?.id || payment.groupId?._id || payment.groupId;
+          : typeof payment.groupId === "object" && payment.groupId !== null
+          ? (payment.groupId as { _id: string })._id || ""
+          : "";
 
       return (
         payment.status === "completed" &&

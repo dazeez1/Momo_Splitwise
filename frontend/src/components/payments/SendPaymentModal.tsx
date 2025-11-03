@@ -206,10 +206,13 @@ const SendPaymentModal: React.FC<SendPaymentModalProps> = ({
                   setFormData((prev) => ({
                     ...prev,
                     toUserId: e.target.value,
-                    amount: selectedDebt?.amount.toString() || prev.amount,
-                    description:
-                      `Settle up with ${selectedDebt?.user?.name} for ${selectedDebt?.group}` ||
-                      prev.description,
+                    amount:
+                      selectedDebt && selectedDebt.amount != null
+                        ? selectedDebt.amount.toString()
+                        : prev.amount,
+                    description: selectedDebt
+                      ? `Settle up with ${selectedDebt.user?.name} for ${selectedDebt.group}`
+                      : prev.description,
                     groupId: selectedDebt?.groupId || prev.groupId,
                   }));
                 }}

@@ -104,7 +104,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
       // Reload groups list from API
       loadGroups();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     } catch (error: any) {
       console.error("Error creating group:", error);
       setError(error.message || "Failed to create group. Please try again.");

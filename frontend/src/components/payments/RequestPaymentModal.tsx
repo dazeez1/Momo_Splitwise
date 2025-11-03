@@ -186,9 +186,9 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
                     ...prev,
                     fromUserId: e.target.value,
                     amount: selectedCredit?.amount.toString() || prev.amount,
-                    description:
-                      `Payment request from ${selectedCredit?.user?.name} for ${selectedCredit?.group}` ||
-                      prev.description,
+                    description: selectedCredit
+                      ? `Payment request from ${selectedCredit.user?.name} for ${selectedCredit.group}`
+                      : prev.description,
                     groupId: selectedCredit?.groupId || prev.groupId,
                   }));
                 }}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { X, Users, FileText, User } from "lucide-react";
-import type { Group } from "../../types";
+import type { APIGroup } from "../../types";
 import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -9,7 +9,7 @@ import { useToast } from "../../contexts/ToastContext";
 interface EditGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  group: Group;
+  group: APIGroup;
 }
 
 // Color options for groups
@@ -40,7 +40,7 @@ const EditGroupModal: React.FC<EditGroupModalProps> = ({
     group.members
   );
   const [emailSearch, setEmailSearch] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const [searchResults, setSearchResults] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSearching, setIsSearching] = useState(false);
@@ -74,7 +74,7 @@ const EditGroupModal: React.FC<EditGroupModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const updatedGroup: Group = {
+      const updatedGroup: APIGroup = {
         ...group,
         name: formData.name.trim(),
         description: formData.description.trim(),
