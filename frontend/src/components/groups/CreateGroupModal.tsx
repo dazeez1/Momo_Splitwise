@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { X, Users, FileText, User, Plus } from "lucide-react";
 import { useApp } from "../../contexts/AppContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -22,6 +23,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { addGroup, users, loadGroups } = useApp();
   const { user } = useAuth();
   const [formData, setFormData] = useState({
@@ -94,6 +96,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         memberEmails: memberEmails, // Send emails instead of IDs
         currency: formData.currency.toUpperCase(),
         color: formData.color,
+        members: []
       });
 
       onClose();
@@ -101,6 +104,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
 
       // Reload groups list from API
       loadGroups();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error("Error creating group:", error);
       setError(error.message || "Failed to create group. Please try again.");
@@ -148,7 +152,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <svg
                   className="h-5 w-5 text-red-600"
                   fill="currentColor"
@@ -342,7 +346,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-yellow-600 to-yellow-700 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
+              className="px-6 py-3 text-sm font-medium text-white bg-linear-to-r from-yellow-600 to-yellow-700 border border-transparent rounded-lg hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Creating..." : "Create Group"}

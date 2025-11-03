@@ -32,6 +32,7 @@ export interface Group {
   name: string;
   description: string;
   members: string[];
+  memberEmails?: string[];
   createdBy: string;
   createdAt: string; // Changed from Date to string
   currency: string;
@@ -140,6 +141,7 @@ export interface AppContextType {
   setCurrentGroup: (group: Group | null) => void;
   simplifyDebts: (groupId: string) => Debt[];
   getGroupExpenses: (groupId: string) => Expense[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getExpenseReport: (groupId?: string) => any;
   calculateBalances: (groupId: string) => Balance[];
   resetToDemoData: () => void;

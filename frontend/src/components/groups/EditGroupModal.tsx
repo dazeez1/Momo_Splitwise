@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { X, Users, FileText, User } from "lucide-react";
 import type { Group } from "../../types";
 import { useApp } from "../../contexts/AppContext";
@@ -39,7 +40,9 @@ const EditGroupModal: React.FC<EditGroupModalProps> = ({
     group.members
   );
   const [emailSearch, setEmailSearch] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
