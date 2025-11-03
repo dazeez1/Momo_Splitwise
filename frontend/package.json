@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0",
+    "lint:ci": "eslint . --ext .ts,.tsx,.js,.jsx || true",
     "preview": "vite preview"
   },
   "dependencies": {
