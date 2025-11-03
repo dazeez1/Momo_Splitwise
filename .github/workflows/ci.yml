@@ -42,7 +42,8 @@ jobs:
 
       # 5. Lint
       - name: Run ESLint
-        run: npm run lint || true
+        run: Change the lint step in your workflow to ignore warnings
+          npm run lint -- --max-warnings=0
         working-directory: ${{ matrix.service }}
 
       # 6. Run tests
