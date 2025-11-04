@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "lint:ci": "eslint . --ext .ts,.tsx,.js,.jsx || true",
     "test": "jest"
   },

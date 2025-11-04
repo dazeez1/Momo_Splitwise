@@ -42,10 +42,8 @@ jobs:
 
       # 5. Lint
       - name: Run ESLint (CI-friendly)
-        run: |
-          npm install -g eslint
-          eslint . --ext .ts,.tsx,.js,.jsx || echo "ESLint completed with warnings/errors, but CI continues."
-        working-directory: ${{ matrix.service }}
+        run: npm run lint:ci
+        working-directory: ${{ matrix.service }} 
 
 
       # 6. Run tests
