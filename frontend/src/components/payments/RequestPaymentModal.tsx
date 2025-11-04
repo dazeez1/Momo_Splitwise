@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, Download, User, Wallet } from "lucide-react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useApp } from "../../contexts/AppContext";
@@ -15,7 +16,6 @@ interface RequestPaymentModalProps {
     description: string,
     groupId?: string
   ) => void;
-  users: any[];
   peopleOweYou: any[];
 }
 
@@ -23,10 +23,8 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
   isOpen,
   onClose,
   onRequestPayment,
-  users,
   peopleOweYou,
 }) => {
-  const { user } = useAuth();
   const { showToast } = useToast();
   const { groups } = useApp();
   const [formData, setFormData] = useState({
@@ -139,7 +137,7 @@ const RequestPaymentModal: React.FC<RequestPaymentModalProps> = ({
                     className="w-full flex items-center justify-between p-3 text-left bg-white rounded-lg hover:bg-yellow-50 hover:border-yellow-300 border border-transparent transition-all duration-200"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center shrink-0">
                         <User className="h-4 w-4" />
                       </div>
                       <div>

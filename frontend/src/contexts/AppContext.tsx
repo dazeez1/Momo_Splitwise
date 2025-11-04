@@ -16,6 +16,7 @@ import apiService from "../services/apiService";
 // REMOVED: import { useAuth } from './AuthContext';
 
 // Simple ID generator function
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
