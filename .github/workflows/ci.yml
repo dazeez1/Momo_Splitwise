@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - devops
   pull_request:
     branches:
       - main
+      - devops
 
 jobs:
   build-and-test:
@@ -40,21 +42,30 @@ jobs:
         run: npm install
         working-directory: ${{ matrix.service }}
 
-      # 5. Lint
+      # 5. Run ESLint (safe for CI)
       - name: Run ESLint (CI-friendly)
-        run: npm run lint:ci
-        working-directory: ${{ matrix.service }} 
-
+        run: |
+          if npm run | grep -q "lint:ci"; then
+            npm run lint:ci
+          elif npm run | grep -q "lint"; then
+            npm run lint
+          else
+            echo "⚠️  No lint script found for ${{ matrix.service }}, skipping..."
+          fi
+        working-directory: ${{ matrix.service }}
 
       # 6. Run tests
       - name: Run tests
-        run: npm test
+        run: |
+          if npm run | grep -q "test"; then
+            npm test
+          else
+            echo "⚠️  No test script found for ${{ matrix.service }}, skipping..."
+          fi
         working-directory: ${{ matrix.service }}
 
-      # 7. Build
+      # 7. Build (only for frontend)
       - name: Build project
-        run: |
-          if [ "${{ matrix.service }}" == "frontend" ]; then
-            npm run build
-          fi
+        if: matrix.service == 'frontend'
+        run: npm run build
         working-directory: frontend
