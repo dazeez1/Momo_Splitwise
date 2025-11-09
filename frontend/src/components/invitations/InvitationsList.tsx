@@ -30,8 +30,7 @@ const InvitationsList: React.FC<InvitationsListProps> = ({
     try {
       const response = await apiService.getInvitations();
       const fetchedInvitations =
-        response.data?.invitations || response.invitations || [];
-
+        response.invitations || [];
       // Transform MongoDB invitations to frontend format
       const transformedInvitations: Invitation[] = fetchedInvitations.map(
         (inv: any) => ({

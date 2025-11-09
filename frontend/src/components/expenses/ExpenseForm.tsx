@@ -3,6 +3,7 @@ import { X, Users, DollarSign, FileText } from "lucide-react";
 import type { User } from "../../types";
 import { useApp } from "../../contexts/AppContext";
 import { useToast } from "../../contexts/ToastContext";
+import { ExpenseCategory } from '../../types'; 
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
@@ -183,7 +184,10 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         category: formData.category,
       };
 
-      await addExpense(expenseData);
+      await addExpense({
+  ...expenseData,
+  category: expenseData.category as ExpenseCategory
+});
       showToast("Expense added successfully", "success");
       onClose();
       resetForm();

@@ -44,7 +44,7 @@ const Groups: React.FC = () => {
   const filteredGroups = userGroups.filter(
     (group) =>
       group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      group.description.toLowerCase().includes(searchTerm.toLowerCase())
+      group.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getMemberNames = (memberIds: string[]) => {
@@ -59,7 +59,9 @@ const Groups: React.FC = () => {
   };
 
   const handleEdit = (group: Group) => {
-    setSelectedGroup(group);
+    // Ensure color is a string to match the Group type (prevent undefined)
+    const safeGroup = { ...group, color: group.color ?? "bg-gray-200" } as Group;
+    setSelectedGroup(safeGroup);
     setIsEditModalOpen(true);
     setActiveDropdown(null);
   };
@@ -227,7 +229,7 @@ const Groups: React.FC = () => {
                       {activeDropdown === group.id && (
                         <div className="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
                           <button
-                            onClick={() => handleEdit(group)}
+                            onClick={() => handleEdit(group as Group)}
                             className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           >
                             <Edit className="h-4 w-4" />

@@ -77,7 +77,7 @@ const EditGroupModal: React.FC<EditGroupModalProps> = ({
       const updatedGroup: APIGroup = {
         ...group,
         name: formData.name.trim(),
-        description: formData.description.trim(),
+        description: formData.description?.trim() || '',
         currency: formData.currency,
         color: formData.color,
         members: selectedMembers,

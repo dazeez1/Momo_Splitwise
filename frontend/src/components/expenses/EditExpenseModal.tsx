@@ -3,6 +3,7 @@ import { X, Users, DollarSign, FileText } from "lucide-react";
 import type { Expense, User } from "../../types";
 import { useApp } from "../../contexts/AppContext";
 import { useToast } from "../../contexts/ToastContext";
+import { ExpenseCategory } from '../../types';
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
@@ -291,7 +292,7 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
             <select
               value={formData.category}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, category: e.target.value }))
+                setFormData((prev) => ({ ...prev, category: e.target.value as ExpenseCategory }))
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all duration-200"
               required

@@ -49,7 +49,7 @@ const GroupDetail: React.FC = () => {
     if (groupId && groups.length > 0) {
       const foundGroup = groups.find((g) => g.id === groupId);
       if (foundGroup) {
-        setGroup(foundGroup);
+        setGroup(foundGroup as Group);
       } else {
         // If not found in local state, navigate back
         navigate("/dashboard/groups");
@@ -233,7 +233,7 @@ const GroupDetail: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {group.members.map((memberId, index) => {
+          {group.members.map((memberId: string, index: number) => {
             const member = users.find((u) => u.id === memberId);
             const balance = balances.find((b) => b.userId === memberId);
             const isUser = memberId === authUser?.id;

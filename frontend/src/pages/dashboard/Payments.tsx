@@ -92,26 +92,24 @@ const Payments: React.FC = () => {
       };
     });
 
-  // Transform payments from API to PaymentRequest format for display
-  const paymentRequests = payments
-    .filter((payment) => {
-      const matchesSearch = payment.description
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      return matchesSearch;
-    })
-    .map((payment) => ({
-      id: payment.id,
-      fromUserId: payment.fromUserId,
-      toUserId: payment.toUserId,
-      amount: payment.amount,
-      currency: payment.currency,
-      description: payment.description || "Payment",
-      status: payment.status,
-      createdAt: payment.createdAt,
-      completedAt: payment.completedAt,
-      groupId: payment.groupId || "direct",
-    }));
+// Transform payments from API to PaymentRequest format for display
+  const filteredPayments = payments
+  .filter((payment) =>
+    payment.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  .map((payment) => ({
+    id: payment.id,
+    fromUserId: payment.fromUserId,
+    toUserId: payment.toUserId,
+    amount: payment.amount,
+    currency: payment.currency,
+    description: payment.description || "Payment",
+    status: payment.status,
+    createdAt: payment.createdAt,
+    completedAt: payment.completedAt,
+    groupId: payment.groupId || "direct",
+  }));
+
 
   const handleSendPayment = async (
     toUserId: string,
@@ -177,7 +175,9 @@ const Payments: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: PaymentRequest["status"]) => {
+  type PaymentStatus = "completed" | "sent" | "received" | "pending" | "failed" | string;
+
+  function getStatusIcon(status: PaymentStatus) {
     switch (status) {
       case "completed":
         return <CheckCircle className="h-5 w-5 text-green-500" />;
@@ -192,9 +192,9 @@ const Payments: React.FC = () => {
       default:
         return <AlertCircle className="h-5 w-5 text-gray-500" />;
     }
-  };
+  }
 
-  const getStatusColor = (status: PaymentRequest["status"]) => {
+  const getStatusColor = (status: PaymentStatus) => {
     switch (status) {
       case "completed":
         return "text-green-700 bg-green-50 border-green-200";
@@ -211,20 +211,22 @@ const Payments: React.FC = () => {
     }
   };
 
-  const filteredPaymentRequests = paymentRequests.filter(
-    (request) =>
-      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      users
-        .find(
-          (u) =>
-            u.id ===
-            (request.fromUserId === user?.id
-              ? request.toUserId
-              : request.fromUserId)
-        )
-        ?.name.toLowerCase()
-        .includes(searchTerm.toLowerCase())
+const filteredPaymentRequests = filteredPayments.filter((request) => {
+  const otherUser = users.find(
+    (u) =>
+      u.id ===
+      (request.fromUserId === user?.id ? request.toUserId : request.fromUserId)
   );
+
+  const descMatch = request.description
+    ?.toLowerCase()
+    .includes(searchTerm.toLowerCase());
+  const nameMatch = otherUser?.name
+    ?.toLowerCase()
+    .includes(searchTerm.toLowerCase());
+
+  return !!(descMatch || nameMatch);
+});
 
   const exportToCSV = () => {
     const headers = ["Date", "Type", "User", "Amount", "Description", "Status"];
@@ -796,14 +798,14 @@ const Payments: React.FC = () => {
                                     </button>
                                   </>
                                 )}
-                                {isOutgoing && request.status === "sent" && (
+                                {isOutgoing && (request.status as any) === "sent" && (
                                   <span className="text-xs text-blue-600 font-medium">
                                     Waiting for confirmation...
                                   </span>
                                 )}
 
                                 {/* Recipient actions */}
-                                {!isOutgoing && request.status === "sent" && (
+                                {!isOutgoing && (request.status as any) === "sent" && (
                                   <button
                                     onClick={() =>
                                       handleMarkReceived(request.id)
@@ -851,11 +853,10 @@ const Payments: React.FC = () => {
         isOpen={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
         onRequestPayment={handleRequestPayment}
-        users={users.filter((u) => u.id !== user?.id)}
         peopleOweYou={peopleOweYou}
       />
     </div>
   );
-};
+}
 
 export default Payments;

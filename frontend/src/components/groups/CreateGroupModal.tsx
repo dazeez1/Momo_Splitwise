@@ -93,10 +93,9 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
       await addGroup({
         name: formData.name.trim(),
         description: formData.description.trim(),
-        memberEmails: memberEmails, // Send emails instead of IDs
         currency: formData.currency.toUpperCase(),
         color: formData.color,
-        members: []
+        members: memberEmails,
       });
 
       onClose();
