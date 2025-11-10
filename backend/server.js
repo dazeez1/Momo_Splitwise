@@ -191,7 +191,7 @@ const startServer = async () => {
 };
 
 // Handle unhandled promise rejections
-process.on("unhandledRejection", (err, promise) => {
+process.on("unhandledRejection", (err, _promise) => {
   console.log("❌ Unhandled Promise Rejection:", err.message);
   process.exit(1);
 });

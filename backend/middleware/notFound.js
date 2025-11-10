@@ -4,7 +4,7 @@
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const notFound = (req, res, next) => {
+const notFound = (req, res, _next) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,

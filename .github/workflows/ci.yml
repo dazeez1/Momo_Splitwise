@@ -24,18 +24,13 @@ jobs:
           cache: npm
           cache-dependency-path: |
             backend/package-lock.json
-            momo_splitwise/package-lock.json
 
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Install frontend dependencies
-        working-directory: momo_splitwise
-        run: npm ci
-
-      - name: Run frontend lint
-        working-directory: momo_splitwise
+      - name: Run backend lint
+        working-directory: backend
         run: npm run lint
 
       - name: Run backend tests

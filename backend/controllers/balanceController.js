@@ -119,8 +119,8 @@ exports.getSimplifiedDebts = async (req, res) => {
     const { groupId } = req.params;
     const userId = req.userId || req.user._id;
 
-    // Get balances first
-    const balanceResponse = await this.getGroupBalances(req, res);
+    // Ensure balances are calculated using existing logic
+    await this.getGroupBalances(req, res);
 
     // This is called internally, so we need to get the data differently
     const group = await Group.findById(groupId);
