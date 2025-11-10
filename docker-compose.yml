@@ -1,0 +1,63 @@
+# docker-compose.yml
+services:
+  # Backend API service.
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: momo-backend
+    # Map the API port.
+    ports:
+      - "5001:5001"
+    # Load environment variables.
+    env_file:
+      - ./backend/.env
+    # Override connection details.
+    environment:
+      - PORT=5001
+      - MONGODB_URI=mongodb://momo_user:momo_password@mongo:27017/momo_splitwise?authSource=admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # MongoDB database service.
+  mongo:
+    image: mongo:7.0
+    container_name: momo-mongo
+    restart: unless-stopped
+    # Expose MongoDB to the host.
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=momo_user
+      - MONGO_INITDB_ROOT_PASSWORD=momo_password
+      - MONGO_INITDB_DATABASE=momo_splitwise
+    volumes:
+      # Persist database files.
+      - mongo_data:/data/db
+    healthcheck:
+      # Wait for MongoDB to accept connections.
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "mongodb://momo_user:momo_password@localhost:27017/admin",
+          "--eval",
+          "db.runCommand({ ping: 1 })",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+volumes:
+  # Volume storing MongoDB data files.
+  mongo_data:
+
+networks:
+  # Network to isolate application services.
+  app-network:
