@@ -5,7 +5,7 @@
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   console.error("Error:", err);
 
   // Mongoose validation error

@@ -21,7 +21,7 @@ const generateAccessToken = (payload) => {
       audience: "momo-splitwise-client",
     });
   } catch (error) {
-    throw new Error("Failed to generate access token");
+    throw new Error(`Failed to generate access token: ${error.message}`);
   }
 };
 
@@ -38,7 +38,7 @@ const generateRefreshToken = (payload) => {
       audience: "momo-splitwise-client",
     });
   } catch (error) {
-    throw new Error("Failed to generate refresh token");
+    throw new Error(`Failed to generate refresh token: ${error.message}`);
   }
 };
 
@@ -125,7 +125,7 @@ const getTokenExpiration = (token) => {
   try {
     const decoded = jwt.decode(token);
     return decoded ? new Date(decoded.exp * 1000) : null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };

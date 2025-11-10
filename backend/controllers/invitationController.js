@@ -1,8 +1,6 @@
 const Invitation = require("../models/Invitation");
 const Group = require("../models/Group");
 const User = require("../models/User");
-const { validationResult } = require("express-validator");
-
 /**
  * Get all pending invitations for the current user
  */

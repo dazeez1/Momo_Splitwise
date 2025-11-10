@@ -1,92 +1,100 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-require('dotenv').config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const { createServer } = require("http");
+const { Server } = require("socket.io");
+require("dotenv").config();
 
 // Import routes
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const groupRoutes = require('./routes/groupRoutes');
-const expenseRoutes = require('./routes/expenseRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-const invitationRoutes = require('./routes/invitationRoutes');
-const balanceRoutes = require('./routes/balanceRoutes');
+const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
+const groupRoutes = require("./routes/groupRoutes");
+const expenseRoutes = require("./routes/expenseRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const invitationRoutes = require("./routes/invitationRoutes");
+const balanceRoutes = require("./routes/balanceRoutes");
 
 // Import middleware
-const errorHandler = require('./middleware/errorHandler');
-const notFound = require('./middleware/notFound');
+const errorHandler = require("./middleware/errorHandler");
+const notFound = require("./middleware/notFound");
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:5174'],
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
+    origin: ["http://localhost:3000", "http://localhost:5174"],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
 const PORT = process.env.PORT || 5001;
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5174'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
-  optionsSuccessStatus: 200
-}));
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://localhost:5174"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Origin",
+      "X-Requested-With",
+      "Accept",
+    ],
+    optionsSuccessStatus: 200,
+  })
+);
 
 // Rate limiting - more lenient for development
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 1000, // limit each IP to 1000 requests per minute
-  message: 'Too many requests from this IP, please try again later.'
+  message: "Too many requests from this IP, please try again later.",
 });
 app.use(limiter);
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
-app.use(morgan('combined'));
+app.use(morgan("combined"));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStates = {
-    0: 'disconnected',
-    1: 'connected',
-    2: 'connecting',
-    3: 'disconnecting'
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting",
   };
 
   res.status(200).json({
-    status: 'OK',
-    message: 'Momo Splitwise API is running',
+    status: "OK",
+    message: "Momo Splitwise API is running",
     timestamp: new Date().toISOString(),
-    service: 'MoMo Split API',
-    database: dbStates[dbState] === 'connected' ? 'Connected' : 'Disconnected',
-    databaseName: mongoose.connection.db?.databaseName || 'Unknown',
-    host: mongoose.connection.host || 'Unknown'
+    service: "MoMo Split API",
+    database: dbStates[dbState] === "connected" ? "Connected" : "Disconnected",
+    databaseName: mongoose.connection.db?.databaseName || "Unknown",
+    host: mongoose.connection.host || "Unknown",
   });
 });
 
 // API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/groups', groupRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/invitations', invitationRoutes);
-app.use('/api/balances', balanceRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/groups", groupRoutes);
+app.use("/api/expenses", expenseRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/invitations", invitationRoutes);
+app.use("/api/balances", balanceRoutes);
 
 // Error handling middleware
 app.use(notFound);
@@ -97,9 +105,11 @@ const connectDatabase = async () => {
   try {
     // Prioritize MONGODB_URI (Atlas) over MONGODB_URL (local)
     const mongoUri = process.env.MONGODB_URI || process.env.MONGODB_URL;
-    
+
     if (!mongoUri) {
-      throw new Error('MongoDB URI not found in environment variables. Please set MONGODB_URI or MONGODB_URL');
+      throw new Error(
+        "MongoDB URI not found in environment variables. Please set MONGODB_URI or MONGODB_URL"
+      );
     }
 
     // Enhanced connection options for MongoDB Atlas
@@ -112,30 +122,32 @@ const connectDatabase = async () => {
 
     await mongoose.connect(mongoUri, connectionOptions);
 
-    console.log('✅ MongoDB Atlas connected successfully');
+    console.log("✅ MongoDB Atlas connected successfully");
     console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
     console.log(`🌐 Host: ${mongoose.connection.host}`);
   } catch (error) {
-    console.error('❌ MongoDB Atlas connection error:', error.message);
-    console.error('💡 Make sure your MONGODB_URI is correct and your IP is whitelisted');
+    console.error("❌ MongoDB Atlas connection error:", error.message);
+    console.error(
+      "💡 Make sure your MONGODB_URI is correct and your IP is whitelisted"
+    );
     process.exit(1);
   }
 };
 
 // Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('👤 User connected:', socket.id);
+io.on("connection", (socket) => {
+  console.log("👤 User connected:", socket.id);
 
   // Join user-specific room for notifications
-  socket.on('join', (userId) => {
+  socket.on("join", (userId) => {
     if (userId) {
       socket.join(`user:${userId}`);
       console.log(`✅ User ${userId} joined their notification room`);
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('👋 User disconnected:', socket.id);
+  socket.on("disconnect", () => {
+    console.log("👋 User disconnected:", socket.id);
   });
 });
 
@@ -145,45 +157,56 @@ const emitNotification = (userId, event, data) => {
 };
 
 // Make io and emitNotification available to routes
-app.set('io', io);
-app.set('emitNotification', emitNotification);
+app.set("io", io);
+app.set("emitNotification", emitNotification);
 
 // Start server
 const startServer = async () => {
   try {
     await connectDatabase();
-    
+
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Health check: http://localhost:${PORT}/health`);
       console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth`);
       console.log(`👥 Group endpoints: http://localhost:${PORT}/api/groups`);
-      console.log(`💰 Expense endpoints: http://localhost:${PORT}/api/expenses`);
-      console.log(`💳 Payment endpoints: http://localhost:${PORT}/api/payments`);
-      console.log(`🎫 Invitation endpoints: http://localhost:${PORT}/api/invitations`);
-      console.log(`⚖️ Balance endpoints: http://localhost:${PORT}/api/balances`);
+      console.log(
+        `💰 Expense endpoints: http://localhost:${PORT}/api/expenses`
+      );
+      console.log(
+        `💳 Payment endpoints: http://localhost:${PORT}/api/payments`
+      );
+      console.log(
+        `🎫 Invitation endpoints: http://localhost:${PORT}/api/invitations`
+      );
+      console.log(
+        `⚖️ Balance endpoints: http://localhost:${PORT}/api/balances`
+      );
       console.log(`⚡ Socket.io enabled for real-time updates`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
+    console.error("❌ Failed to start server:", error.message);
     process.exit(1);
   }
 };
 
-module.exports = { app, io, emitNotification };
-
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.log('❌ Unhandled Promise Rejection:', err.message);
+process.on("unhandledRejection", (err, _promise) => {
+  console.log("❌ Unhandled Promise Rejection:", err.message);
   process.exit(1);
 });
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.log('❌ Uncaught Exception:', err.message);
+process.on("uncaughtException", (err) => {
+  console.log("❌ Uncaught Exception:", err.message);
   process.exit(1);
 });
 
-startServer();
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}
 
 module.exports = app;
+module.exports.startServer = startServer;
+module.exports.io = io;
+module.exports.emitNotification = emitNotification;

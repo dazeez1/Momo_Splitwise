@@ -9,15 +9,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Test email connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.log("❌ Email service not configured:", error.message);
-    console.log("📧 Email notifications will be disabled");
-  } else {
-    console.log("✅ Email service ready");
-  }
-});
+// Test email connection outside of automated test runs.
+if (
+  process.env.NODE_ENV !== "test" &&
+  process.env.EMAIL_USER &&
+  process.env.EMAIL_PASS
+) {
+  transporter.verify((error) => {
+    if (error) {
+      console.log("❌ Email service not configured:", error.message);
+      console.log("📧 Email notifications will be disabled");
+    } else {
+      console.log("✅ Email service ready");
+    }
+  });
+}
 
 /**
  * Send an email
