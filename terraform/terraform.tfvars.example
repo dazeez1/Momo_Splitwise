@@ -1,0 +1,43 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and fill in your actual values
+# DO NOT commit terraform.tfvars to version control (it contains sensitive data)
+
+# Project Configuration
+project_name = "momo-splitwise"
+environment  = "prod" # Options: dev, staging, prod
+
+# Azure Configuration
+azure_region = "eastus" # Choose your preferred Azure region
+
+# Network Configuration
+vnet_address_space   = ["10.0.0.0/16"]
+public_subnet_cidr   = "10.0.1.0/24"   # Bastion Host subnet
+private_subnet_cidr  = "10.0.2.0/24"  # Application VM subnet
+database_subnet_cidr = "10.0.3.0/24"  # Database subnet (reserved)
+app_gateway_subnet_cidr = "10.0.4.0/24" # Application Gateway subnet
+
+# Security Configuration
+# IMPORTANT: Replace with your actual public IP address for security
+# Find your IP at: https://whatismyipaddress.com/
+# Use CIDR notation, e.g., "203.0.113.0/32" for a single IP
+allowed_ssh_ip_address = "YOUR_PUBLIC_IP_ADDRESS/32"
+
+# Virtual Machine Configuration
+bastion_vm_size     = "Standard_B1s"    # 1 vCPU, 1GB RAM (cheapest)
+application_vm_size = "Standard_B2s"   # 2 vCPU, 4GB RAM
+
+# VM Admin Configuration
+vm_admin_username = "azureuser"
+
+# SSH Public Key
+# Get your public key with: cat ~/.ssh/id_rsa.pub
+# Or generate one with: ssh-keygen -t rsa -b 4096
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... your-email@example.com"
+
+# Container Registry Configuration
+acr_sku = "Basic" # Options: Basic, Standard, Premium
+
+# MongoDB Atlas Configuration (Optional)
+# This is for reference - MongoDB Atlas is provisioned separately
+# mongodb_atlas_connection_string = "mongodb+srv://username:password@cluster.mongodb.net/momo_splitwise?retryWrites=true&w=majority"
+
