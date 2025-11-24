@@ -1,0 +1,201 @@
+# Security Module - Creates Network Security Groups with proper rules
+
+# Network Security Group for Bastion Host (in Public Subnet)
+resource "azurerm_network_security_group" "bastion" {
+  name                = "${var.project_name}-${var.environment}-bastion-nsg"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  # Allow SSH from allowed IP address only
+  security_rule {
+    name                       = "allow-ssh-from-allowed-ip"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.allowed_ssh_ip_address
+    destination_address_prefix = "*"
+    description                = "Allow SSH access from allowed IP address"
+  }
+
+  # Deny all other inbound traffic
+  security_rule {
+    name                       = "deny-all-inbound"
+    priority                   = 4000
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Deny all other inbound traffic"
+  }
+
+  # Allow all outbound traffic (for updates, package installation, etc.)
+  security_rule {
+    name                       = "allow-all-outbound"
+    priority                   = 1000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Allow all outbound traffic"
+  }
+
+  tags = var.common_tags
+}
+
+# Network Security Group for Application VM (in Private Subnet)
+resource "azurerm_network_security_group" "application" {
+  name                = "${var.project_name}-${var.environment}-app-nsg"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  # Allow SSH from Bastion Host only
+  security_rule {
+    name                       = "allow-ssh-from-bastion"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.public_subnet_cidr
+    destination_address_prefix = "*"
+    description                = "Allow SSH access from Bastion Host subnet"
+  }
+
+  # Allow HTTP from Application Gateway
+  security_rule {
+    name                       = "allow-http-from-app-gateway"
+    priority                   = 1010
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "5001"
+    source_address_prefix      = var.app_gateway_subnet_cidr
+    destination_address_prefix = "*"
+    description                = "Allow HTTP traffic from Application Gateway to backend port"
+  }
+
+  # Allow HTTPS from Application Gateway
+  security_rule {
+    name                       = "allow-https-from-app-gateway"
+    priority                   = 1020
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = var.app_gateway_subnet_cidr
+    destination_address_prefix = "*"
+    description                = "Allow HTTPS traffic from Application Gateway"
+  }
+
+  # Allow all outbound traffic (for API calls, package updates, etc.)
+  security_rule {
+    name                       = "allow-all-outbound"
+    priority                   = 1000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Allow all outbound traffic"
+  }
+
+  # Deny all other inbound traffic
+  security_rule {
+    name                       = "deny-all-inbound"
+    priority                   = 4000
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Deny all other inbound traffic"
+  }
+
+  tags = var.common_tags
+}
+
+# Network Security Group for Database Subnet (for future use)
+resource "azurerm_network_security_group" "database" {
+  name                = "${var.project_name}-${var.environment}-database-nsg"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  # Allow MongoDB connection from Application VM only
+  security_rule {
+    name                       = "allow-mongodb-from-app"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "27017"
+    source_address_prefix      = var.private_subnet_cidr
+    destination_address_prefix = "*"
+    description                = "Allow MongoDB connection from Application VM subnet"
+  }
+
+  # Deny all other inbound traffic
+  security_rule {
+    name                       = "deny-all-inbound"
+    priority                   = 4000
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Deny all other inbound traffic"
+  }
+
+  # Allow all outbound traffic
+  security_rule {
+    name                       = "allow-all-outbound"
+    priority                   = 1000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Allow all outbound traffic"
+  }
+
+  tags = var.common_tags
+}
+
+# Associate Bastion NSG with Public Subnet
+resource "azurerm_subnet_network_security_group_association" "bastion" {
+  subnet_id                 = var.public_subnet_id
+  network_security_group_id = azurerm_network_security_group.bastion.id
+}
+
+# Associate Application NSG with Private Subnet
+resource "azurerm_subnet_network_security_group_association" "application" {
+  subnet_id                 = var.private_subnet_id
+  network_security_group_id = azurerm_network_security_group.application.id
+}
+
+# Associate Database NSG with Database Subnet
+resource "azurerm_subnet_network_security_group_association" "database" {
+  subnet_id                 = var.database_subnet_id
+  network_security_group_id = azurerm_network_security_group.database.id
+}
+
