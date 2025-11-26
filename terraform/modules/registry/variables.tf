@@ -26,14 +26,14 @@ variable "acr_sku" {
   default     = "Basic"
 }
 
+variable "resource_suffix" {
+  description = "Random suffix for unique resource names"
+  type        = string
+}
+
 variable "common_tags" {
   description = "Common tags to apply to all resources"
   type        = map(string)
   default     = {}
-}
-
-variable "resource_suffix" {
-  description = "Random suffix for unique resource names"
-  type        = string
 }
 

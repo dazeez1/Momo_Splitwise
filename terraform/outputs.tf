@@ -48,6 +48,11 @@ output "application_vm_private_ip" {
   value       = module.compute.application_vm_private_ip
 }
 
+output "application_vm_public_ip" {
+  description = "Public IP address of the Application VM"
+  value       = module.compute.application_vm_public_ip
+}
+
 output "application_vm_id" {
   description = "ID of the Application VM"
   value       = module.compute.application_vm_id
@@ -79,6 +84,13 @@ output "container_registry_admin_password" {
 # Application Gateway Outputs
 output "application_gateway_public_ip" {
   description = "Public IP address of the Application Gateway"
+  value       = azurerm_public_ip.app_gateway.ip_address
+}
+
+# Note: Application Gateway doesn't expose fqdn attribute directly
+# Use the public IP address instead
+output "application_gateway_fqdn" {
+  description = "Public IP address of the Application Gateway (use as FQDN)"
   value       = azurerm_public_ip.app_gateway.ip_address
 }
 

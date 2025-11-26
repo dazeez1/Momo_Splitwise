@@ -51,8 +51,11 @@ resource "azurerm_network_security_group" "public_subnet" {
   tags = var.common_tags
 }
 
-# Note: NSG associations are handled by the security module to avoid duplicates
-# These NSGs are created here for reference but associations are done in security module
+# Associate NSG with Public Subnet
+resource "azurerm_subnet_network_security_group_association" "public" {
+  subnet_id                 = azurerm_subnet.public.id
+  network_security_group_id = azurerm_network_security_group.public_subnet.id
+}
 
 # Create Network Security Group for Private Subnet
 resource "azurerm_network_security_group" "private_subnet" {
@@ -63,6 +66,12 @@ resource "azurerm_network_security_group" "private_subnet" {
   tags = var.common_tags
 }
 
+# Associate NSG with Private Subnet
+resource "azurerm_subnet_network_security_group_association" "private" {
+  subnet_id                 = azurerm_subnet.private.id
+  network_security_group_id = azurerm_network_security_group.private_subnet.id
+}
+
 # Create Network Security Group for Database Subnet
 resource "azurerm_network_security_group" "database_subnet" {
   name                = "${var.project_name}-${var.environment}-database-subnet-nsg"
@@ -70,5 +79,11 @@ resource "azurerm_network_security_group" "database_subnet" {
   location            = var.location
 
   tags = var.common_tags
+}
+
+# Associate NSG with Database Subnet
+resource "azurerm_subnet_network_security_group_association" "database" {
+  subnet_id                 = azurerm_subnet.database.id
+  network_security_group_id = azurerm_network_security_group.database_subnet.id
 }
 

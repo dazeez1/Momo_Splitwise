@@ -85,15 +85,21 @@ variable "ssh_public_key" {
   sensitive   = true
 }
 
+variable "create_managed_identity" {
+  description = "Whether to create a managed identity for the Application VM (for ACR access)"
+  type        = bool
+  default     = true
+}
+
+variable "create_acr_role_assignment" {
+  description = "Whether to create ACR pull role assignment for the managed identity"
+  type        = bool
+  default     = false
+}
+
 variable "common_tags" {
   description = "Common tags to apply to all resources"
   type        = map(string)
   default     = {}
-}
-
-variable "create_acr_role_assignment" {
-  description = "Whether to create ACR role assignment (requires User Access Administrator permissions)"
-  type        = bool
-  default     = false
 }
 

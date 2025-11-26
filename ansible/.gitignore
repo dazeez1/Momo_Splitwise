@@ -1,0 +1,35 @@
+# Ansible Git Ignore File
+
+# Inventory files with sensitive data
+inventory/hosts.yml
+!inventory/hosts.yml.example
+
+# Ansible vault files
+*.vault
+*.vault.yml
+
+# Terraform outputs (may contain sensitive data)
+terraform_outputs.json
+
+# Ansible retry files
+*.retry
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# SSH keys (if stored locally)
+*.pem
+*.key
+!*.pub
+
+# Environment-specific files
+.env
+.env.local
+

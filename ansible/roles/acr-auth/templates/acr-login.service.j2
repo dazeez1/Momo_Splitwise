@@ -1,0 +1,19 @@
+[Unit]
+Description=Azure Container Registry Login Service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/scripts/acr-login.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+# Retry on failure
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+

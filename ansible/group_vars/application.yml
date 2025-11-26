@@ -1,0 +1,18 @@
+---
+# Group variables for application hosts
+
+# Azure Container Registry Configuration
+# Update these values after Terraform deployment:
+#   terraform output container_registry_name
+#   terraform output resource_group_name
+acr_name: "momosplitwiseprodacrzfbsm6"
+acr_resource_group: "momo-splitwise-prod-rg"
+
+# Docker Configuration
+docker_compose_version: "2.24.0"
+docker_users:
+  - azureuser
+
+# Application Configuration
+app_name: "momo-splitwise"
+app_environment: "prod"

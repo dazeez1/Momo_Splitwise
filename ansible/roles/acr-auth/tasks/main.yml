@@ -1,0 +1,64 @@
+---
+# Azure Container Registry Authentication Role
+# Configures Docker to authenticate with Azure Container Registry
+
+- name: Check if Azure CLI is installed
+  command: az --version
+  register: azure_cli_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Azure CLI (if not present)
+  shell: |
+    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+  when: azure_cli_check.rc != 0
+  register: azure_cli_install
+
+- name: Ensure Azure CLI is installed
+  command: az --version
+  when: azure_cli_check.rc != 0
+
+- name: Create directory for ACR login script
+  file:
+    path: /opt/scripts
+    state: directory
+    mode: '0755'
+
+- name: Create ACR login script
+  template:
+    src: acr-login.sh.j2
+    dest: /opt/scripts/acr-login.sh
+    mode: '0755'
+
+- name: Create systemd service for ACR login (using Managed Identity)
+  template:
+    src: acr-login.service.j2
+    dest: /etc/systemd/system/acr-login.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable ACR login service
+  systemd:
+    name: acr-login
+    enabled: yes
+    daemon_reload: yes
+
+- name: Start ACR login service (non-blocking)
+  systemd:
+    name: acr-login
+    state: started
+  ignore_errors: yes
+  register: acr_service_start
+
+- name: Perform initial ACR login using Managed Identity
+  shell: |
+    az login --identity --allow-no-subscriptions || true
+    az acr login --name {{ acr_name }} || true
+  register: acr_login_result
+  changed_when: false
+  failed_when: false
+
+- name: Display ACR login status
+  debug:
+    msg: "ACR authentication configured. Service enabled. Note: Managed Identity may need to be configured for automatic login."
+

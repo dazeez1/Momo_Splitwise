@@ -1,0 +1,7 @@
+---
+# Handlers for ACR Auth role
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+

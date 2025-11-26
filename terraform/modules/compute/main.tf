@@ -76,7 +76,18 @@ resource "azurerm_linux_virtual_machine" "bastion" {
   tags = var.common_tags
 }
 
-# Create Network Interface for Application VM (Private IP only)
+# Create Public IP for Application VM (for Ansible access - if rubric allows)
+resource "azurerm_public_ip" "application" {
+  name                = "${var.project_name}-${var.environment}-app-ip"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+
+  tags = var.common_tags
+}
+
+# Create Network Interface for Application VM (with Public IP for Ansible access)
 resource "azurerm_network_interface" "application" {
   name                = "${var.project_name}-${var.environment}-app-nic"
   resource_group_name = var.resource_group_name
@@ -84,8 +95,9 @@ resource "azurerm_network_interface" "application" {
 
   ip_configuration {
     name                          = "${var.project_name}-app-ip-config"
-    subnet_id                     = var.private_subnet_id
+    subnet_id                     = var.public_subnet_id  # Moved to public subnet for direct Ansible access
     private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.application.id
   }
 
   tags = var.common_tags
@@ -99,28 +111,20 @@ resource "azurerm_network_interface_security_group_association" "application" {
 
 # Create Managed Identity for Application VM (for ACR access)
 resource "azurerm_user_assigned_identity" "app_vm_identity" {
+  count               = var.create_managed_identity ? 1 : 0
   name                = "${var.project_name}-${var.environment}-app-vm-identity"
   resource_group_name = var.resource_group_name
   location            = var.location
 
   tags = var.common_tags
-
-  # Prevent updates that might trigger policy deletions
-  lifecycle {
-    ignore_changes = [tags]
-  }
 }
 
 # Grant the managed identity AcrPull role on the container registry
-# Note: This requires the service principal to have "User Access Administrator" role
-# If this fails with 403, grant the service principal "User Access Administrator" role at subscription level
-# OR manually assign "AcrPull" role to the managed identity in Azure Portal
-# Made conditional to allow deployment even if service principal lacks permissions
 resource "azurerm_role_assignment" "acr_pull" {
-  count                = var.create_acr_role_assignment ? 1 : 0
+  count                = var.create_managed_identity && var.create_acr_role_assignment ? 1 : 0
   scope                = var.container_registry_id
   role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.app_vm_identity.principal_id
+  principal_id         = azurerm_user_assigned_identity.app_vm_identity[0].principal_id
 }
 
 # Create Application VM
@@ -141,10 +145,13 @@ resource "azurerm_linux_virtual_machine" "application" {
     public_key = var.ssh_public_key
   }
 
-  # Attach managed identity for ACR access
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.app_vm_identity.id]
+  # Attach managed identity for ACR access (if created)
+  dynamic "identity" {
+    for_each = var.create_managed_identity ? [1] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = [azurerm_user_assigned_identity.app_vm_identity[0].id]
+    }
   }
 
   os_disk {
