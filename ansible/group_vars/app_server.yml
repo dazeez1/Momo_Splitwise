@@ -1,0 +1,34 @@
+---
+# Registry type: "docker" or "ecr" or "acr"
+registry_type: "docker"
+
+# For generic docker registry (Docker Hub or private registry)
+registry_url: "registry.example.com"
+registry_username: "YOUR_USERNAME"
+registry_password: "YOUR_PASSWORD"
+
+# For ECR (AWS) usage (if registry_type: "ecr")
+ecr_region: "us-east-1"
+ecr_repository: "123456789012.dkr.ecr.us-east-1.amazonaws.com/myapp"
+# optionally override image_tag
+app_image_tag: "latest"
+
+# For ACR (Azure) usage (if registry_type: "acr")
+acr_login_server: "myacr.azurecr.io"
+acr_username: "my-acr-username"   # optional for service principal
+acr_password: "my-acr-password"   # optional for service principal
+
+# Docker compose file path on remote
+compose_path: "/opt/myapp"
+compose_file: "docker-compose.yml"
+compose_project_name: "myapp"
+
+# Packages to install
+required_packages:
+  - git
+  - curl
+  - ca-certificates
+  - apt-transport-https
+  - gnupg
+  - lsb-release
+  - python3-pip
