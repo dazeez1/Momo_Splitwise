@@ -1,0 +1,151 @@
+---
+- name: Deploy Application to Production
+  hosts: app_server
+  become: yes
+  vars_files:
+    - group_vars/app_server.yml
+
+  pre_tasks:
+    - name: Ensure apt cache is updated
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  tasks:
+    - name: Install required system packages
+      apt:
+        name: "{{ required_packages }}"
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker apt repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+        state: present
+        filename: docker
+
+    - name: Install docker engine packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+        update_cache: yes
+
+    - name: Ensure docker service is running and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install docker-compose plugin (v2) - create plugin dir
+      file:
+        path: /usr/local/lib/docker/cli-plugins
+        state: directory
+        mode: '0755'
+
+    - name: Download docker compose v2 binary (CLI plugin)
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-$(uname -s)-$(uname -m)"
+        dest: /usr/local/lib/docker/cli-plugins/docker-compose
+        mode: '0755'
+      register: compose_dl
+      changed_when: compose_dl is changed
+      # Note: if remote doesn't have curl substitution, see README to replace with actual URL per platform
+
+    - name: Ensure python docker package (for Ansible docker modules)
+      pip:
+        name:
+          - "docker"
+          - "docker-compose"
+        executable: pip3
+
+    - name: Create app directory for compose
+      file:
+        path: "{{ compose_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy docker-compose file to remote
+      copy:
+        src: docker-compose.yml
+        dest: "{{ compose_path }}/{{ compose_file }}"
+        owner: root
+        group: root
+        mode: '0644'
+
+    # Registry authentication paths
+    - block:
+        - name: Install awscli (for ECR login)
+          apt:
+            name: awscli
+            state: present
+        - name: Get ECR login password and login to ECR (awscli)
+          become: yes
+          shell: |
+            aws ecr get-login-password --region {{ ecr_region }} | docker login --username AWS --password-stdin {{ ecr_repository.split('/')[0] | default('') }}
+          args:
+            warn: false
+      when: registry_type == "ecr"
+
+    - block:
+        - name: Login to Azure Container Registry (acr) using docker login
+          shell: |
+            echo "{{ acr_password }}" | docker login {{ acr_login_server }} --username "{{ acr_username | default(acr_login_server.split('.')[0]) }}" --password-stdin
+          args:
+            warn: false
+      when: registry_type == "acr"
+
+    - block:
+        - name: Login to generic Docker registry
+          community.docker.docker_login:
+            registry_url: "{{ registry_url }}"
+            username: "{{ registry_username }}"
+            password: "{{ registry_password }}"
+      when: registry_type == "docker"
+
+    - name: Pull latest image (generic docker)
+      when: registry_type == "docker"
+      community.docker.docker_image:
+        name: "{{ registry_url }}/{{ ecr_repository | default('') | default('') }}{{ '' }}"
+        source: pull
+        tag: "{{ app_image_tag | default('latest') }}"
+      ignore_errors: yes
+
+    - name: Pull image for ECR (if using ECR)
+      when: registry_type == "ecr"
+      shell: >
+        docker pull {{ ecr_repository }}:{{ app_image_tag | default('latest') }}
+      args:
+        chdir: "{{ compose_path }}"
+        warn: false
+
+    - name: Pull image for ACR (if using ACR)
+      when: registry_type == "acr"
+      shell: >
+        docker pull {{ acr_login_server }}/{{ ecr_repository | default('myapp') }}:{{ app_image_tag | default('latest') }}
+      args:
+        chdir: "{{ compose_path }}"
+        warn: false
+
+    - name: Ensure docker-compose project is up
+      shell: |
+        /usr/local/lib/docker/cli-plugins/docker-compose -f {{ compose_path }}/{{ compose_file }} -p {{ compose_project_name }} pull --ignore-pull-failures
+        /usr/local/lib/docker/cli-plugins/docker-compose -f {{ compose_path }}/{{ compose_file }} -p {{ compose_project_name }} up -d --remove-orphans
+      args:
+        chdir: "{{ compose_path }}"
+        warn: false
+
+  post_tasks:
+    - name: Show running containers
+      shell: docker ps --format "table {{'{{'}}.Names{{'}}'}}\t{{'{{'}}.Image{{'}}'}}\t{{'{{'}}.Status{{'}}'}}"
+      register: ps
+    - debug:
+        var: ps.stdout_lines
