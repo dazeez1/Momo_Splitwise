@@ -1,9 +1,9 @@
-# 💸 MoMo Splitwise  
+# MoMo Splitwise  
 **Tagline:** *"Split bills, keep friends."*  
 
 ---
 
-## 📘 Project Overview  
+## Project Overview  
 
 **MoMo Splitwise** is a web-based application designed to help groups — such as friends, roommates, or informal savings groups — easily track shared expenses and split costs fairly using mobile money.  
 
@@ -11,13 +11,13 @@ The project aims to address a common problem faced by many young Africans: the d
 
 ---
 
-## 🌍 Problem Statement  
+## Problem Statement  
 
 Groups like university students, roommates, and chamas (informal savings groups) often struggle to track shared expenses and ensure fair cost distribution. Without proper tools, this process can lead to misunderstandings and financial disputes. **MoMo Splitwise** simplifies this by allowing users to record expenses, calculate balances, and generate mobile money payment links — all in one platform.
 
 ---
 
-## 🧑‍🤝‍🧑 Target Users  
+## Target Users  
 
 - University students  
 - Shared housing or roommate groups  
@@ -26,17 +26,17 @@ Groups like university students, roommates, and chamas (informal savings groups)
 
 ---
 
-## ⚙️ Core Features  
+## Core Features  
 
-- 🧾 Create and manage expense groups  
-- 💰 Add expenses and assign split percentages  
-- 🔄 Automatically calculate who owes whom  
-- 🔗 Generate mobile money payment links  
-- 📊 View expense history and reports  
+- Create and manage expense groups  
+- Add expenses and assign split percentages  
+- Automatically calculate who owes whom  
+- Generate mobile money payment links  
+- View expense history and reports  
 
 ---
 
-## 🧱 Tech Stack  
+## Tech Stack  
 
 | Layer | Technology |
 |-------|-------------|
@@ -48,9 +48,9 @@ Groups like university students, roommates, and chamas (informal savings groups)
 
 ---
 
-## 🚀 Setup Instructions  
+## Setup Instructions  
 
-### 🔧 Prerequisites  
+### Prerequisites  
 Ensure you have the following installed:  
 - [Node.js](https://nodejs.org/)  
 - [Docker](https://www.docker.com/) and Docker Compose  
@@ -58,11 +58,11 @@ Ensure you have the following installed:
 
 ---
 
-### 🧩 Running the App (Local Development)
+### Running the App (Local Development)
 
 1. **Clone the repository:**  
    ```bash
-   git clone https://github.com/your-username/momo_splitwise.git
+   git clone https://github.com/dazeez1/Momo_Splitwise.git
    cd momo_splitwise
 
    Backend setup:
@@ -86,7 +86,7 @@ Visit http://localhost:5173 (frontend) and http://localhost:5000 (backend API).
 
 ---
 
-**🐳 Running with Docker Compose**
+**Running with Docker Compose**
 
 To run both frontend and backend containers together:
 ```bash
@@ -102,7 +102,7 @@ docker compose up --build
   
 ---
 
-## 🔁 Continuous Integration (CI)
+## Continuous Integration (CI)
 
 The project includes a GitHub Actions CI pipeline that automatically:
 
@@ -117,15 +117,15 @@ The project includes a GitHub Actions CI pipeline that automatically:
 ✅ The pipeline fails if linting, tests, or the Docker build fail.
 ✅ Branch protection rules ensure all checks pass before merging to main.
 
-## 🧑‍💻 Team Members
+## Team Members
 |Name	 |Role|  
 |------|----------|
-|*Damilare Gbenga Azeez* |	Backend Developer && CI/CD Integrator| 
+|*Damilare Gbenga Azeez* |	Backend Developer && Quality Assurance| 
 |*Stella Remember Habiyambere*| DevOps Engineer && Documentation Lead|
-|*Daniel Iryivuze*|	 Frontend Developer && Quality Assurance|
+|*Daniel Iryivuze*|	 Frontend Developer && CI/CD Integrator|
 
 ---
-# 🏗️ Project Phases
+# Project Phases
 ## Formative 1: Project Foundation
 
 - Defined project idea, context, and target users
@@ -146,7 +146,7 @@ The project includes a GitHub Actions CI pipeline that automatically:
 
 - Enforced CI checks before merging to main
 
-## 🔒 Repository Configuration
+## Repository Configuration
 
 - .gitignore excludes sensitive files (e.g., .env, node_modules/, build artifacts)
 
@@ -156,10 +156,7 @@ The project includes a GitHub Actions CI pipeline that automatically:
 
 - GitHub Project board tracks all tasks and progress
 
-# 📄 License
 
-This project is licensed under the MIT License — free to use and modify for educational purposes.
-
-# 💬 Acknowledgments
+# Acknowledgments
 
 Special thanks to our DevOps course instructor and team members for collaboration, patience, and teamwork throughout this learning journey.
