@@ -1,0 +1,73 @@
+name: CI - DevSecOps Scans (Trivy + tfsec)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:pr-${{ github.event.pull_request.number }}
+
+jobs:
+  trivy-scan:
+    name: trivy-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set IMAGE_TAG env
+        run: echo "IMAGE_TAG=${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: docker build -t "${{ env.IMAGE_TAG }}" .
+
+      - name: Login to Azure (if AZURE_CREDENTIALS present)
+        if: ${{ secrets.AZURE_CREDENTIALS != null }}
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: (Optional) ACR login using az if registry secret present
+        if: ${{ secrets.REGISTRY != null && secrets.AZURE_CREDENTIALS != null }}
+        run: |
+          az acr login --name $(echo "${{ secrets.REGISTRY }}" | cut -d'.' -f1)
+
+      - name: Run Trivy vulnerability scanner (SARIF output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.IMAGE_TAG }}'
+          format: 'sarif'
+          output: 'trivy-report.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          vuln-type: 'os,library'
+          ignore-unfixed: 'false'
+
+      - name: Upload Trivy SARIF (GitHub Code Scanning)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-report.sarif
+
+  tfsec-scan:
+    name: tfsec-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run tfsec (IaC scan)
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: 'terraform/'
+          soft_fail: false
