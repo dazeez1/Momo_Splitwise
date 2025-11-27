@@ -1,0 +1,35 @@
+# Ansible Inventory File Example
+# Copy this file to hosts.yml and update with your actual IP addresses
+# 
+# Usage:
+#   cp inventory/hosts.yml.example inventory/hosts.yml
+#   # Then update the IP addresses below
+
+all:
+  children:
+    bastion:
+      hosts:
+        bastion_host:
+          ansible_host: "20.123.45.67"  # Update with: terraform output bastion_host_public_ip
+          ansible_user: azureuser
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    
+    application:
+      hosts:
+        application_vm:
+          # Application VM is in private subnet, access via Bastion (jump host)
+          ansible_host: "10.0.2.4"  # Update with: terraform output application_vm_private_ip
+          ansible_user: azureuser
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          # SSH through Bastion (jump host)
+          ansible_ssh_common_args: >
+            -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@20.123.45.67"
+            -o StrictHostKeyChecking=no
+          # Update the IP in ProxyCommand with your bastion_host_public_ip
+
+  vars:
+    # Common variables for all hosts
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_connection: ssh
+

@@ -1,0 +1,90 @@
+---
+# Main Ansible Playbook for Momo Splitwise Application VM Configuration
+# 
+# This playbook configures the Application VM with:
+#   - Docker Engine
+#   - Docker Compose
+#   - Azure Container Registry authentication
+#   - System optimizations
+#
+# Usage:
+#   ansible-playbook -i ../inventory/hosts.yml main.yml
+
+- name: Configure Application VM for Container Deployment
+  hosts: application
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    docker_compose_version: "2.24.0"
+    docker_users:
+      - azureuser
+    
+  pre_tasks:
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+          - git
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+    
+    - name: Check if Docker is already installed
+      command: docker --version
+      register: docker_version_check
+      changed_when: false
+      failed_when: false
+    
+    - name: Check if Docker Compose is already installed
+      command: docker compose version
+      register: docker_compose_version_check
+      changed_when: false
+      failed_when: false
+
+  roles:
+    - role: docker
+      tags: docker
+    
+    - role: acr-auth
+      tags: acr-auth
+
+  post_tasks:
+    - name: Verify Docker installation
+      command: docker --version
+      register: docker_verification
+      changed_when: false
+    
+    - name: Display Docker version
+      debug:
+        msg: "Docker installed successfully: {{ docker_verification.stdout }}"
+    
+    - name: Verify Docker Compose installation
+      command: docker compose version
+      register: docker_compose_verification
+      changed_when: false
+    
+    - name: Display Docker Compose version
+      debug:
+        msg: "Docker Compose installed successfully: {{ docker_compose_verification.stdout }}"
+    
+    - name: Test Docker daemon
+      command: docker ps
+      register: docker_test
+      changed_when: false
+    
+    - name: Display Docker test result
+      debug:
+        msg: "Docker daemon is running successfully"
+

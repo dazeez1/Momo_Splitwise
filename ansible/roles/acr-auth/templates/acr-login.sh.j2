@@ -1,0 +1,26 @@
+#!/bin/bash
+# Azure Container Registry Login Script
+# This script authenticates Docker with ACR using Azure Managed Identity
+
+set -e
+
+ACR_NAME="{{ acr_name }}"
+RESOURCE_GROUP="{{ acr_resource_group }}"
+
+# Log to syslog
+logger -t acr-login "Starting ACR authentication for ${ACR_NAME}"
+
+# Login using Managed Identity
+az login --identity --allow-no-subscriptions || {
+    logger -t acr-login "ERROR: Failed to login with Managed Identity"
+    exit 1
+}
+
+# Authenticate Docker with ACR
+az acr login --name "${ACR_NAME}" || {
+    logger -t acr-login "ERROR: Failed to authenticate Docker with ACR ${ACR_NAME}"
+    exit 1
+}
+
+logger -t acr-login "Successfully authenticated Docker with ACR ${ACR_NAME}"
+

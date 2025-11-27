@@ -137,6 +137,9 @@ module "compute" {
   admin_username = var.vm_admin_username
   ssh_public_key = var.ssh_public_key
   
+  # Temporarily disable managed identity due to Azure policy restrictions
+  create_managed_identity = false
+  
   common_tags = local.common_tags
 }
 

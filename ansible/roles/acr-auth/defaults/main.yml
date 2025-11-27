@@ -1,0 +1,6 @@
+---
+# Default variables for ACR Auth role
+
+acr_name: "CHANGE_ME"  # Update with: terraform output container_registry_name
+acr_resource_group: "CHANGE_ME"  # Update with: terraform output resource_group_name
+

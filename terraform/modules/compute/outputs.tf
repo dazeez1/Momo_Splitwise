@@ -20,13 +20,18 @@ output "application_vm_private_ip" {
   value       = azurerm_network_interface.application.private_ip_address
 }
 
+output "application_vm_public_ip" {
+  description = "Public IP address of the Application VM (for Ansible access)"
+  value       = azurerm_public_ip.application.ip_address
+}
+
 output "application_vm_id" {
   description = "ID of the Application VM"
   value       = azurerm_linux_virtual_machine.application.id
 }
 
 output "application_vm_identity_id" {
-  description = "ID of the managed identity for Application VM"
-  value       = azurerm_user_assigned_identity.app_vm_identity.id
+  description = "ID of the managed identity for Application VM (null if not created)"
+  value       = var.create_managed_identity ? azurerm_user_assigned_identity.app_vm_identity[0].id : null
 }
 
