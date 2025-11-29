@@ -16,7 +16,6 @@ jobs:
     name: trivy-scan
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,22 +28,14 @@ jobs:
       - name: Build Docker image
         run: docker build -t "${{ env.IMAGE_TAG }}" .
 
-      # --------------------------------------
-      # Fix: wrap secrets in env for condition
-      # --------------------------------------
-      - name: Export secrets for conditions
-        run: |
-          echo "HAS_AZ_CREDS=${{ secrets.AZURE_CREDENTIALS }}" >> $GITHUB_ENV
-          echo "HAS_REGISTRY=${{ secrets.REGISTRY }}" >> $GITHUB_ENV
-
-      - name: Login to Azure (only if secret provided)
-        if: env.HAS_AZ_CREDS != ''
+      - name: Login to Azure (if AZURE_CREDENTIALS present)
+        if: ${{ secrets.AZURE_CREDENTIALS }}
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: (Optional) ACR login (only if both secrets exist)
-        if: env.HAS_AZ_CREDS != '' && env.HAS_REGISTRY != ''
+      - name: (Optional) ACR login using az if registry secret present
+        if: ${{ secrets.REGISTRY && secrets.AZURE_CREDENTIALS }}
         run: |
           az acr login --name $(echo "${{ secrets.REGISTRY }}" | cut -d'.' -f1)
 
@@ -69,7 +60,6 @@ jobs:
     name: tfsec-scan
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
