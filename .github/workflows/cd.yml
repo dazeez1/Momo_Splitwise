@@ -16,7 +16,7 @@ jobs:
 
     # Job-level env → can safely use GitHub context & secrets
     env:
-      IMAGE_NAME: ${{ github.repository_owner }}/${{ github.repository }}
+      IMAGE_NAME: ${{ github.repository_owner }}/{{ github.repository | toLowerCase }}
       REGISTRY: ${{ secrets.REGISTRY }}
       IMAGE_TAG: ${{ github.sha }}
 
