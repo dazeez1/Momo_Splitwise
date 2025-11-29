@@ -10,6 +10,8 @@ permissions:
 
 env:
   IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}:pr-${{ github.event.pull_request.number }}
+  AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
+  REGISTRY: ${{ secrets.REGISTRY }}
 
 jobs:
   trivy-scan:
@@ -30,15 +32,15 @@ jobs:
         run: docker build -t "${{ env.IMAGE_TAG }}" .
 
       - name: Login to Azure (optional)
-        if: ${{ secrets.AZURE_CREDENTIALS }}
+        if: env.AZURE_CREDS != ''
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ env.AZURE_CREDS }}
 
       - name: (Optional) ACR login
-        if: ${{ secrets.REGISTRY && secrets.AZURE_CREDENTIALS }}
+        if: env.AZURE_CREDS != '' && env.REGISTRY != ''
         run: |
-          az acr login --name $(echo "${{ secrets.REGISTRY }}" | cut -d'.' -f1)
+          az acr login --name $(echo "${{ env.REGISTRY }}" | cut -d'.' -f1)
 
       - name: Run Trivy vulnerability scanner (SARIF output)
         uses: aquasecurity/trivy-action@v1
@@ -47,7 +49,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-report.sarif'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'          # <-- allow workflow to continue even if vulnerabilities found
+          exit-code: '0'
           vuln-type: 'os,library'
           ignore-unfixed: 'false'
 
@@ -72,4 +74,4 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.0
         with:
           working_directory: 'terraform/'
-          soft_fail: true          # <-- do not fail workflow on findings
+          soft_fail: true
