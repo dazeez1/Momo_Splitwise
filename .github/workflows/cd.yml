@@ -49,7 +49,7 @@ jobs:
           # if you need tfsec action, use the action version; here is a quick run:
           docker run --rm -v "${{ github.workspace }}/terraform":/src aquasec/tfsec /src || true
 
-      # --- 2: Build image and push to ACR ---
+      # --- 2: Build image and push to ACR
       - name: Set up QEMU (optional)
         uses: docker/setup-qemu-action@v2
 
