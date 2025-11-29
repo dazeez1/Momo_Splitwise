@@ -29,13 +29,13 @@ jobs:
         run: docker build -t "${{ env.IMAGE_TAG }}" .
 
       - name: Login to Azure (if AZURE_CREDENTIALS present)
-        if: ${{ secrets.AZURE_CREDENTIALS != null }}
+        if: ${{ secrets.AZURE_CREDENTIALS }}
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: (Optional) ACR login using az if registry secret present
-        if: ${{ secrets.REGISTRY != null && secrets.AZURE_CREDENTIALS != null }}
+        if: ${{ secrets.REGISTRY && secrets.AZURE_CREDENTIALS }}
         run: |
           az acr login --name $(echo "${{ secrets.REGISTRY }}" | cut -d'.' -f1)
 

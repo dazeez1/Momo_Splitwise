@@ -1,9 +1,23 @@
 ---
 - name: Deploy Application to Production
-  hosts: app_server
+  hosts: all  # ⬅️ CHANGE THIS - will accept any IP provided
   become: yes
-  vars_files:
-    - group_vars/app_server.yml
+  vars:
+    # ⬅️ ADD THESE VARIABLES
+    app_image_tag: "latest"
+    ecr_repository: "monos-stativist"
+    ecr_region: "us-east-1"
+    registry_type: "ecr"
+    compose_path: "/opt/monos-stativist"
+    compose_file: "docker-compose.yml"
+    compose_project_name: "monos-stativist"
+    required_packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
 
   pre_tasks:
     - name: Ensure apt cache is updated
@@ -24,7 +38,7 @@
 
     - name: Add Docker apt repository
       apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         filename: docker
 
@@ -49,103 +63,63 @@
         state: directory
         mode: '0755'
 
-    - name: Download docker compose v2 binary (CLI plugin)
+    - name: Download docker compose v2 binary
       get_url:
-        url: "https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-$(uname -s)-$(uname -m)"
+        url: "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)"
         dest: /usr/local/lib/docker/cli-plugins/docker-compose
         mode: '0755'
-      register: compose_dl
-      changed_when: compose_dl is changed
-      # Note: if remote doesn't have curl substitution, see README to replace with actual URL per platform
+        force: yes
 
-    - name: Ensure python docker package (for Ansible docker modules)
-      pip:
-        name:
-          - "docker"
-          - "docker-compose"
-        executable: pip3
+    - name: Install AWS CLI for ECR login
+      apt:
+        name: awscli
+        state: present
 
     - name: Create app directory for compose
       file:
         path: "{{ compose_path }}"
         state: directory
-        owner: root
-        group: root
+        owner: ubuntu
+        group: ubuntu
         mode: '0755'
 
-    - name: Deploy docker-compose file to remote
+    - name: Copy docker-compose file to remote
       copy:
-        src: docker-compose.yml
+        src: ../docker-compose.yml  # ⬅️ UPDATE PATH
         dest: "{{ compose_path }}/{{ compose_file }}"
-        owner: root
-        group: root
+        owner: ubuntu
+        group: ubuntu
         mode: '0644'
 
-    # Registry authentication paths
-    - block:
-        - name: Install awscli (for ECR login)
-          apt:
-            name: awscli
-            state: present
-        - name: Get ECR login password and login to ECR (awscli)
-          become: yes
-          shell: |
-            aws ecr get-login-password --region {{ ecr_region }} | docker login --username AWS --password-stdin {{ ecr_repository.split('/')[0] | default('') }}
-          args:
-            warn: false
-      when: registry_type == "ecr"
-
-    - block:
-        - name: Login to Azure Container Registry (acr) using docker login
-          shell: |
-            echo "{{ acr_password }}" | docker login {{ acr_login_server }} --username "{{ acr_username | default(acr_login_server.split('.')[0]) }}" --password-stdin
-          args:
-            warn: false
-      when: registry_type == "acr"
-
-    - block:
-        - name: Login to generic Docker registry
-          community.docker.docker_login:
-            registry_url: "{{ registry_url }}"
-            username: "{{ registry_username }}"
-            password: "{{ registry_password }}"
-      when: registry_type == "docker"
-
-    - name: Pull latest image (generic docker)
-      when: registry_type == "docker"
-      community.docker.docker_image:
-        name: "{{ registry_url }}/{{ ecr_repository | default('') | default('') }}{{ '' }}"
-        source: pull
-        tag: "{{ app_image_tag | default('latest') }}"
-      ignore_errors: yes
-
-    - name: Pull image for ECR (if using ECR)
-      when: registry_type == "ecr"
-      shell: >
-        docker pull {{ ecr_repository }}:{{ app_image_tag | default('latest') }}
-      args:
-        chdir: "{{ compose_path }}"
-        warn: false
-
-    - name: Pull image for ACR (if using ACR)
-      when: registry_type == "acr"
-      shell: >
-        docker pull {{ acr_login_server }}/{{ ecr_repository | default('myapp') }}:{{ app_image_tag | default('latest') }}
-      args:
-        chdir: "{{ compose_path }}"
-        warn: false
-
-    - name: Ensure docker-compose project is up
+    - name: Login to Amazon ECR
       shell: |
-        /usr/local/lib/docker/cli-plugins/docker-compose -f {{ compose_path }}/{{ compose_file }} -p {{ compose_project_name }} pull --ignore-pull-failures
-        /usr/local/lib/docker/cli-plugins/docker-compose -f {{ compose_path }}/{{ compose_file }} -p {{ compose_project_name }} up -d --remove-orphans
+        aws ecr get-login-password --region {{ ecr_region }} | docker login --username AWS --password-stdin {{ ecr_repository.split('/')[0] }}
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key_id | default(omit) }}"
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key | default(omit) }}"
+      register: ecr_login
+      changed_when: "'Login Succeeded' in ecr_login.stdout"
+
+    - name: Pull latest Docker image from ECR
+      shell: |
+        docker pull {{ ecr_repository }}:{{ app_image_tag }}
       args:
         chdir: "{{ compose_path }}"
-        warn: false
+      register: pull_result
+      changed_when: "'Status: Downloaded newer image' in pull_result.stdout"
 
-  post_tasks:
-    - name: Show running containers
-      shell: docker ps --format "table {{'{{'}}.Names{{'}}'}}\t{{'{{'}}.Image{{'}}'}}\t{{'{{'}}.Status{{'}}'}}"
-      register: ps
-    - debug:
-        var: ps.stdout_lines
+    - name: Start application with Docker Compose
+      shell: |
+        docker compose -f {{ compose_file }} up -d
+      args:
+        chdir: "{{ compose_path }}"
+
+    - name: Verify application is running
+      shell: |
+        docker ps --filter "name=monos-stativist" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+      register: app_status
+      changed_when: false
+
+    - name: Show application status
+      debug:
+        var: app_status.stdout_lines
