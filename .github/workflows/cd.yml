@@ -1,6 +1,6 @@
 name: Deploy to Production
 
-# trigger only on merges
+# trigger only on merges (pushes) to main
 on:
   push:
     branches: [ main ]
