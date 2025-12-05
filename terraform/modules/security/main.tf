@@ -79,7 +79,7 @@ resource "azurerm_network_security_group" "application" {
   # tfsec:ignore:azure-network-ssh-blocked-from-internet - SSH access required for automated deployment
   security_rule {
     name                       = "allow-ssh-from-internet"
-    priority                   = 1010
+    priority                   = 1030
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
