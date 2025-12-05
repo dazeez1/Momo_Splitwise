@@ -7,6 +7,8 @@ resource "azurerm_network_security_group" "bastion" {
   location            = var.location
 
   # Allow SSH from allowed IP address only
+  # tfsec:ignore:azure-network-no-public-ingress - SSH access is restricted to allowed_ssh_ip_address variable
+  # tfsec:ignore:azure-network-ssh-blocked-from-internet - SSH access is intentionally allowed from specific IP for bastion host
   security_rule {
     name                       = "allow-ssh-from-allowed-ip"
     priority                   = 1000
@@ -35,6 +37,7 @@ resource "azurerm_network_security_group" "bastion" {
   }
 
   # Allow all outbound traffic (for updates, package installation, etc.)
+  # tfsec:ignore:azure-network-no-public-egress - Outbound internet access is required for package updates, Azure services, and API calls
   security_rule {
     name                       = "allow-all-outbound"
     priority                   = 1000
@@ -100,6 +103,7 @@ resource "azurerm_network_security_group" "application" {
   }
 
   # Allow all outbound traffic (for API calls, package updates, etc.)
+  # tfsec:ignore:azure-network-no-public-egress - Outbound internet access is required for package updates, Azure services, and API calls
   security_rule {
     name                       = "allow-all-outbound"
     priority                   = 1000
@@ -165,6 +169,7 @@ resource "azurerm_network_security_group" "database" {
   }
 
   # Allow all outbound traffic
+  # tfsec:ignore:azure-network-no-public-egress - Outbound internet access is required for package updates, Azure services, and API calls
   security_rule {
     name                       = "allow-all-outbound"
     priority                   = 1000
