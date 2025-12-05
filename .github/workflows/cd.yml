@@ -44,6 +44,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       # Container scanning with Trivy
       - name: Build Docker image for scanning
         uses: docker/build-push-action@v5
@@ -79,6 +83,10 @@ jobs:
     needs: security-scan
     steps:
       - uses: actions/checkout@v4
+
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Azure Login
         uses: azure/login@v2
