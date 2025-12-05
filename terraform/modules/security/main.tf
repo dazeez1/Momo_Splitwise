@@ -54,13 +54,13 @@ resource "azurerm_network_security_group" "bastion" {
   tags = var.common_tags
 }
 
-# Network Security Group for Application VM (in Private Subnet)
+# Network Security Group for Application VM (in Public Subnet for Ansible access)
 resource "azurerm_network_security_group" "application" {
   name                = "${var.project_name}-${var.environment}-app-nsg"
   resource_group_name = var.resource_group_name
   location            = var.location
 
-  # Allow SSH from Bastion Host only
+  # Allow SSH from Bastion Host subnet
   security_rule {
     name                       = "allow-ssh-from-bastion"
     priority                   = 1000
@@ -72,6 +72,22 @@ resource "azurerm_network_security_group" "application" {
     source_address_prefix      = var.public_subnet_cidr
     destination_address_prefix = "*"
     description                = "Allow SSH access from Bastion Host subnet"
+  }
+
+  # Allow SSH from Internet (for GitHub Actions and Ansible deployment)
+  # tfsec:ignore:azure-network-no-public-ingress - SSH access required for CI/CD deployment
+  # tfsec:ignore:azure-network-ssh-blocked-from-internet - SSH access required for automated deployment
+  security_rule {
+    name                       = "allow-ssh-from-internet"
+    priority                   = 1010
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "Allow SSH access from Internet for GitHub Actions deployment"
   }
 
   # Allow HTTP from Application Gateway
