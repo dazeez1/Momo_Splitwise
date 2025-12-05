@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  web:
+    image: "{{ ecr_repository if registry_type == 'ecr' else (acr_login_server + '/myapp' if registry_type == 'acr' else (registry_url + '/myapp')) }}:{{ app_image_tag | default('latest') }}"
+    restart: always
+    environment:
+      - ENV=production
+    ports:
+      - "80:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    logging:
+      driver: json-file

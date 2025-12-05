@@ -1,0 +1,125 @@
+---
+- name: Deploy Application to Production
+  hosts: all  # ⬅️ CHANGE THIS - will accept any IP provided
+  become: yes
+  vars:
+    # ⬅️ ADD THESE VARIABLES
+    app_image_tag: "latest"
+    ecr_repository: "monos-stativist"
+    ecr_region: "us-east-1"
+    registry_type: "ecr"
+    compose_path: "/opt/monos-stativist"
+    compose_file: "docker-compose.yml"
+    compose_project_name: "monos-stativist"
+    required_packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+
+  pre_tasks:
+    - name: Ensure apt cache is updated
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  tasks:
+    - name: Install required system packages
+      apt:
+        name: "{{ required_packages }}"
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker apt repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Install docker engine packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+        update_cache: yes
+
+    - name: Ensure docker service is running and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install docker-compose plugin (v2) - create plugin dir
+      file:
+        path: /usr/local/lib/docker/cli-plugins
+        state: directory
+        mode: '0755'
+
+    - name: Download docker compose v2 binary
+      get_url:
+        url: "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)"
+        dest: /usr/local/lib/docker/cli-plugins/docker-compose
+        mode: '0755'
+        force: yes
+
+    - name: Install AWS CLI for ECR login
+      apt:
+        name: awscli
+        state: present
+
+    - name: Create app directory for compose
+      file:
+        path: "{{ compose_path }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy docker-compose file to remote
+      copy:
+        src: ../docker-compose.yml  # ⬅️ UPDATE PATH
+        dest: "{{ compose_path }}/{{ compose_file }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Login to Amazon ECR
+      shell: |
+        aws ecr get-login-password --region {{ ecr_region }} | docker login --username AWS --password-stdin {{ ecr_repository.split('/')[0] }}
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key_id | default(omit) }}"
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key | default(omit) }}"
+      register: ecr_login
+      changed_when: "'Login Succeeded' in ecr_login.stdout"
+
+    - name: Pull latest Docker image from ECR
+      shell: |
+        docker pull {{ ecr_repository }}:{{ app_image_tag }}
+      args:
+        chdir: "{{ compose_path }}"
+      register: pull_result
+      changed_when: "'Status: Downloaded newer image' in pull_result.stdout"
+
+    - name: Start application with Docker Compose
+      shell: |
+        docker compose -f {{ compose_file }} up -d
+      args:
+        chdir: "{{ compose_path }}"
+
+    - name: Verify application is running
+      shell: |
+        docker ps --filter "name=monos-stativist" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+      register: app_status
+      changed_when: false
+
+    - name: Show application status
+      debug:
+        var: app_status.stdout_lines
