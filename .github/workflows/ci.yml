@@ -71,10 +71,8 @@ jobs:
           severity: "CRITICAL"
 
       # IaC scanning with tfsec
-      - name: Install tfsec
-        uses: aquasecurity/tfsec-action@v1.0.0
-
       - name: Run tfsec
-        run: |
-          cd terraform
-          tfsec --no-color --soft-fail
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: terraform
+          soft_fail: true
