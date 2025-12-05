@@ -1,36 +1,26 @@
-# Dockerfile
-FROM node:20-alpine
+FROM node:18-alpine
 
-# Node environment to production.
-ENV NODE_ENV=production
-
-# Working directory.
 WORKDIR /app
 
-# Create a dedicated non-root user and group.
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
 # Copy package files
-COPY backend/package*.json ./backend/
+COPY backend/package*.json ./
 
-# Install only the production dependencies.
-RUN npm ci --prefix backend --omit=dev
+# Install dependencies
+RUN npm ci --only=production
 
-# Copy the remaining source code.
-COPY backend ./backend
+# Copy app source
+COPY backend/ .
 
-# Ensure the non-root user owns the files.
-RUN chown -R appuser:appgroup /app
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# Switch to the non-root user.
-USER appuser
+# Set permissions
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
-# Move into the backend directory.
-WORKDIR /app/backend
-
-# Expose the port.
+# Expose port (defaults to 5001, can be overridden via PORT env var)
 EXPOSE 5001
 
-# Start the Express server.
-CMD ["node", "server.js"]
-
+# Start app
+CMD ["npm", "start"]

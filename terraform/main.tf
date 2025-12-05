@@ -212,6 +212,7 @@ resource "azurerm_application_gateway" "main" {
     match {
       status_code = ["200"]
     }
+    pick_host_name_from_backend_http_settings = false
   }
 
   backend_http_settings {
@@ -254,6 +255,13 @@ resource "azurerm_application_gateway" "main" {
     path_rule {
       name                       = "${var.project_name}-api-path-rule"
       paths                      = ["/api/*"]
+      backend_address_pool_name   = "${var.project_name}-backend-pool"
+      backend_http_settings_name  = "${var.project_name}-backend-http-settings"
+    }
+
+    path_rule {
+      name                       = "${var.project_name}-health-path-rule"
+      paths                      = ["/health"]
       backend_address_pool_name   = "${var.project_name}-backend-pool"
       backend_http_settings_name  = "${var.project_name}-backend-http-settings"
     }
