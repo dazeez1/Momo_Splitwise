@@ -53,7 +53,7 @@
       no_log: true
 
     - name: Pull latest images from ACR
-      docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}"
         files:
           - "{{ docker_compose_file }}"
@@ -63,7 +63,7 @@
         COMPOSE_PROJECT_NAME: momo-splitwise
 
     - name: Stop existing containers
-      docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}"
         files:
           - "{{ docker_compose_file }}"
@@ -71,7 +71,7 @@
       ignore_errors: yes
 
     - name: Start containers with docker-compose
-      docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_dir }}"
         files:
           - "{{ docker_compose_file }}"
