@@ -67,7 +67,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan("combined"));
 
 // Health check endpoint
-app.get("/health", (req, res) => {
+const healthCheckHandler = (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStates = {
     0: "disconnected",
@@ -85,7 +85,10 @@ app.get("/health", (req, res) => {
     databaseName: mongoose.connection.db?.databaseName || "Unknown",
     host: mongoose.connection.host || "Unknown",
   });
-});
+};
+
+app.get("/health", healthCheckHandler);
+app.get("/api/health", healthCheckHandler); // Also support /api/health for Application Gateway
 
 // API routes
 app.use("/api/auth", authRoutes);

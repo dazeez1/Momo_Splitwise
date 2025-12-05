@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ${ACR_LOGIN_SERVER}/momo-splitwise-backend:${IMAGE_TAG:-latest}
+    container_name: momo-backend
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      PORT: 5001
+      MONGODB_URI: ${MONGODB_URI}
+      NODE_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET}
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongo:
+    image: mongo:7.0
+    container_name: momo-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: momo_splitwise
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@localhost:27017/admin", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo_data:
+
+networks:
+  app-network:
+    driver: bridge
