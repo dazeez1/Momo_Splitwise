@@ -652,11 +652,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     // Adjust balances based on completed payments
-    const completedPayments = state.payments.filter((payment) => {
+    const completedPayments = state.payments.filter((payment: any) => {
       const paymentGroupId =
         typeof payment.groupId === "string"
           ? payment.groupId
-          : payment.groupId?.id || payment.groupId?._id || payment.groupId;
+          : (payment.groupId as any)?.id || (payment.groupId as any)?._id || payment.groupId;
 
       return (
         payment.status === "completed" &&
