@@ -75,7 +75,7 @@
         project_src: "{{ app_dir }}"
         files:
           - "{{ docker_compose_file }}"
-        pull: yes
+        pull: always
         env_file: "{{ app_dir }}/.env.production"
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
