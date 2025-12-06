@@ -162,8 +162,49 @@ jobs:
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 700 ~/.ssh
+          
+          # Write SSH key using printf to preserve newlines properly
+          # This ensures the key is written exactly as stored in the secret
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          
+          # Verify the key file has proper format (check for BEGIN/END markers)
+          if ! grep -q "BEGIN.*PRIVATE KEY" ~/.ssh/id_rsa; then
+            echo "❌ SSH private key is missing BEGIN marker"
+            echo "This usually means the SSH_PRIVATE_KEY secret is not properly formatted."
+            echo "Key file preview (first 100 chars):"
+            head -c 100 ~/.ssh/id_rsa || cat ~/.ssh/id_rsa | head -c 100
+            echo ""
+            echo "Please ensure SSH_PRIVATE_KEY secret includes:"
+            echo "  - -----BEGIN ... PRIVATE KEY-----"
+            echo "  - The key content"
+            echo "  - -----END ... PRIVATE KEY-----"
+            exit 1
+          fi
+          
+          if ! grep -q "END.*PRIVATE KEY" ~/.ssh/id_rsa; then
+            echo "❌ SSH private key is missing END marker"
+            echo "Key file preview (last 100 chars):"
+            tail -c 100 ~/.ssh/id_rsa || cat ~/.ssh/id_rsa | tail -c 100
+            exit 1
+          fi
+          
+          # Verify SSH key format using ssh-keygen
+          if ! ssh-keygen -l -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "❌ SSH private key is invalid or corrupted"
+            echo "Key file line count: $(wc -l < ~/.ssh/id_rsa)"
+            echo "Key file size: $(wc -c < ~/.ssh/id_rsa) bytes"
+            echo ""
+            echo "First 3 lines:"
+            head -3 ~/.ssh/id_rsa
+            echo ""
+            echo "Last 3 lines:"
+            tail -3 ~/.ssh/id_rsa
+            echo ""
+            echo "Please verify the SSH_PRIVATE_KEY secret in GitHub Settings → Secrets"
+            exit 1
+          fi
           
           # Configure SSH for better connection reliability
           cat >> ~/.ssh/config <<EOF
@@ -181,13 +222,9 @@ jobs:
           # Add host to known_hosts
           ssh-keyscan -H ${{ secrets.APPLICATION_VM_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
           
-          # Verify SSH key format
-          if ! ssh-keygen -l -f ~/.ssh/id_rsa > /dev/null 2>&1; then
-            echo "❌ SSH private key is invalid or corrupted"
-            exit 1
-          fi
-          
           echo "✅ SSH key configured successfully"
+          KEY_TYPE=$(ssh-keygen -l -f ~/.ssh/id_rsa | awk '{print $4}')
+          echo "✅ SSH key type: $KEY_TYPE"
 
       - name: Azure Login
         uses: azure/login@v2
