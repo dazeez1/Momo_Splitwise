@@ -119,16 +119,62 @@
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
 
+    - name: Wait for MongoDB to be ready
+      shell: |
+        timeout 120 bash -c 'until docker exec momo-mongo mongosh --quiet --eval "db.runCommand({ ping: 1 })" > /dev/null 2>&1; do sleep 2; done'
+      ignore_errors: yes
+      register: mongo_wait
+      changed_when: false
+
+    - name: Check container status immediately
+      shell: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+      register: container_status
+      changed_when: false
+
+    - name: Display container status
+      debug:
+        msg: "{{ container_status.stdout_lines }}"
+
+    - name: Check backend container logs if not running
+      shell: |
+        if ! docker ps | grep -q momo-splitwise-backend; then
+          echo "=== Backend container is not running ==="
+          docker logs momo-splitwise-backend --tail 50 2>&1 || echo "Container doesn't exist"
+        else
+          echo "Backend container is running"
+          docker logs momo-splitwise-backend --tail 20
+        fi
+      register: backend_logs
+      failed_when: false
+      ignore_errors: yes
+
+    - name: Display backend logs
+      debug:
+        msg: "{{ backend_logs.stdout_lines }}"
+
     - name: Wait for backend to be healthy
       uri:
         url: "http://localhost:5001/health"
         method: GET
-        status_code: [200, 404, 502, 503]
+        status_code: [200, 404, 502, 503, 000]
       register: health_check
       until: health_check.status == 200
-      retries: 20
-      delay: 15
+      retries: 30
+      delay: 10
       ignore_errors: yes
+
+    - name: Check backend container health status
+      shell: |
+        docker inspect momo-splitwise-backend --format='{{.State.Status}}|{{.State.Health.Status}}|{{.State.ExitCode}}' 2>/dev/null || echo "not-found|unknown|1"
+      register: backend_health_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display backend health status
+      debug:
+        msg:
+          - "Backend container status: {{ backend_health_status.stdout }}"
+          - "If status is not 'running', check logs above"
 
     - name: Verify containers are running
       shell: docker ps
