@@ -189,6 +189,24 @@ The inventory file defines the target hosts. The Application VM is in a private 
 
 ## Troubleshooting
 
+For comprehensive troubleshooting guidance, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+### Quick Connection Test
+
+Use the connection test script to diagnose SSH connection issues:
+
+```bash
+cd ansible
+./check-connection.sh <VM_IP> [SSH_KEY_PATH]
+```
+
+This script will test:
+- ICMP connectivity (ping)
+- SSH port accessibility
+- SSH key validation
+- SSH authentication
+- System requirements
+
 ### Connection Issues
 
 **Problem:** Cannot connect to Bastion host
@@ -255,7 +273,9 @@ After Ansible configuration is complete:
 ## Support
 
 For issues or questions:
-- Check Ansible documentation: https://docs.ansible.com/
-- Review playbook output for error messages
-- Verify infrastructure is deployed correctly with Terraform
+- **Connection Issues**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed SSH connection troubleshooting
+- **Ansible Documentation**: https://docs.ansible.com/
+- **Review playbook output** for error messages (use `-vvv` for verbose output)
+- **Verify infrastructure** is deployed correctly with Terraform
+- **Test connection** using `./check-connection.sh` script
 
