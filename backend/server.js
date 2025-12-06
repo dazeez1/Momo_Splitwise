@@ -37,13 +37,7 @@ const PORT = process.env.PORT || 5001;
 app.use(helmet());
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5174",
-      "http://158.158.49.253:5001",
-      "http://68.221.206.80",
-      process.env.FRONTEND_URL,
-    ].filter(Boolean),
+    origin: ["http://localhost:3000", "http://localhost:5174"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -104,32 +98,6 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/balances", balanceRoutes);
-
-// Serve frontend static files in production (if they exist)
-// Frontend can be built separately and copied to the public directory
-if (process.env.NODE_ENV === "production") {
-  const path = require("path");
-  const fs = require("fs");
-  const frontendPath = path.join(__dirname, "../public");
-  
-  // Check if frontend files exist (optional - frontend can be built separately)
-  if (fs.existsSync(frontendPath) && fs.existsSync(path.join(frontendPath, "index.html"))) {
-    // Serve static files from the React app
-    app.use(express.static(frontendPath));
-    // Handle React routing, return all requests to React app (except API routes)
-    app.get("*", (req, res, next) => {
-      // Don't serve index.html for API routes
-      if (req.path.startsWith("/api")) {
-        return next(); // Let it fall through to error handler
-      }
-      res.sendFile(path.join(frontendPath, "index.html"), (err) => {
-        if (err) {
-          next();
-        }
-      });
-    });
-  }
-}
 
 // Error handling middleware
 app.use(notFound);
