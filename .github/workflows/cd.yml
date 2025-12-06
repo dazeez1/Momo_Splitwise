@@ -3,7 +3,7 @@ name: Continuous Deployment (CD)
 
 on:
   push:
-    branches: [main]
+    branches: [main, Terraform]  # Allow CD on both main and Terraform branches
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
