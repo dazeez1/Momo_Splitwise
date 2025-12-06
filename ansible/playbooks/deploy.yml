@@ -94,7 +94,7 @@
         project_src: "{{ app_dir }}"
         files:
           - "{{ docker_compose_file }}"
-        state: started
+        state: present
         recreate: always
         remove_orphans: yes
         env_files:
