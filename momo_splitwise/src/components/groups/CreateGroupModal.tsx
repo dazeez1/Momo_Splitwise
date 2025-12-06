@@ -94,7 +94,8 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         memberEmails: memberEmails, // Send emails instead of IDs
         currency: formData.currency.toUpperCase(),
         color: formData.color,
-      });
+        members: [], // Will be populated by backend from emails
+      } as any);
 
       onClose();
       resetForm();
