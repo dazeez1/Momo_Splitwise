@@ -25,14 +25,24 @@
       changed_when: false
 
     - name: Login to ACR manually (if service not available)
-      command: az acr login --name {{ acr_name }}
+      shell: |
+        az login --identity --allow-no-subscriptions || true
+        az acr login --name {{ acr_name }}
       when: acr_service_status.failed
+      failed_when: false
+      changed_when: false
+      register: manual_acr_login
+      
+    - name: Ensure ACR authentication before pulling images
+      shell: |
+        az login --identity --allow-no-subscriptions || true
+        az acr login --name {{ acr_name }}
       failed_when: false
       changed_when: false
 
     - name: Copy Docker Compose file
       template:
-        src: ../../templates/docker-compose.prod.j2
+        src: ../templates/docker-compose.prod.j2
         dest: "{{ app_dir }}/{{ docker_compose_file }}"
         mode: "0644"
         owner: azureuser
@@ -90,8 +100,8 @@
         status_code: 200
       register: health_check
       until: health_check.status == 200
-      retries: 10
-      delay: 5
+      retries: 15
+      delay: 10
       ignore_errors: yes
 
     - name: Verify containers are running
