@@ -94,11 +94,11 @@
         project_src: "{{ app_dir }}"
         files:
           - "{{ docker_compose_file }}"
-        state: present
-        restart: yes
+        state: started
+        recreate: always
         remove_orphans: yes
-        stopped: no
-        env_file: "{{ app_dir }}/.env.production"
+        env_files:
+          - "{{ app_dir }}/.env.production"
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
 
@@ -106,11 +106,11 @@
       uri:
         url: "http://localhost:5001/health"
         method: GET
-        status_code: 200
+        status_code: [200, 404, 502, 503]
       register: health_check
       until: health_check.status == 200
-      retries: 15
-      delay: 10
+      retries: 20
+      delay: 15
       ignore_errors: yes
 
     - name: Verify containers are running
