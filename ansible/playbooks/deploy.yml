@@ -6,6 +6,7 @@
   vars:
     app_dir: /opt/momo-splitwise
     docker_compose_file: docker-compose.prod.yml
+    acr_name: "{{ acr_name | default('momosplitwiseprodacrzfbsm6') }}"
 
   tasks:
     - name: Ensure app directory exists
@@ -27,7 +28,7 @@
     - name: Login to ACR manually (if service not available)
       shell: |
         az login --identity --allow-no-subscriptions || true
-        az acr login --name {{ acr_name }}
+        az acr login --name {{ acr_name | default('momosplitwiseprodacrzfbsm6') }}
       when: acr_service_status.failed
       failed_when: false
       changed_when: false
@@ -36,9 +37,10 @@
     - name: Ensure ACR authentication before pulling images
       shell: |
         az login --identity --allow-no-subscriptions || true
-        az acr login --name {{ acr_name }}
+        az acr login --name {{ acr_name | default('momosplitwiseprodacrzfbsm6') }}
       failed_when: false
       changed_when: false
+      when: acr_name is defined or true
 
     - name: Copy Docker Compose file
       template:
