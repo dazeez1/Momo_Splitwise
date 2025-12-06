@@ -2,6 +2,21 @@
 version: '3.8'
 
 services:
+  frontend:
+    image: "{{ frontend_image_tag | default((acr_login_server | default('momosplitwiseprodacr.azurecr.io')) + '/momo-splitwise-frontend:latest') }}"
+    container_name: momo-splitwise-frontend
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   backend:
     image: "{{ image_tag | default((acr_login_server | default('momosplitwiseprodacr.azurecr.io')) + '/momo-splitwise-backend:latest') }}"
     container_name: momo-splitwise-backend
@@ -14,6 +29,7 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
       - SESSION_SECRET=${SESSION_SECRET}
+      - FRONTEND_URL=http://{{ application_vm_public_ip | default('158.158.49.253') }}
     networks:
       - app-network
     healthcheck:

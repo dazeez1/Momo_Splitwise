@@ -151,12 +151,14 @@ jobs:
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "image_tag=${ACR_LOGIN_SERVER}/momo-splitwise-backend:${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
           echo "image_tag_latest=${ACR_LOGIN_SERVER}/momo-splitwise-backend:latest" >> $GITHUB_OUTPUT
+          echo "frontend_image_tag=${ACR_LOGIN_SERVER}/momo-splitwise-frontend:${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          echo "frontend_image_tag_latest=${ACR_LOGIN_SERVER}/momo-splitwise-frontend:latest" >> $GITHUB_OUTPUT
 
       - name: Login to Azure Container Registry
         run: |
           az acr login --name ${{ steps.acr-vars.outputs.acr_name }}
 
-      - name: Build and push Docker image
+      - name: Build and push backend Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -167,11 +169,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          build-args: |
+            VITE_API_URL=http://158.158.49.253:5001/api
+            VITE_SOCKET_URL=http://158.158.49.253:5001
+          tags: |
+            ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:${GITHUB_SHA::8}
+            ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Output image details
         run: |
-          echo "✅ Image pushed successfully:"
+          echo "✅ Backend image pushed successfully:"
           echo "  - ${{ steps.acr-vars.outputs.image_tag }}"
           echo "  - ${{ steps.acr-vars.outputs.image_tag_latest }}"
+          echo "✅ Frontend image pushed successfully:"
+          echo "  - ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:${GITHUB_SHA::8}"
+          echo "  - ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:latest"
 
   # Deploy to Azure VM using Ansible
   deploy:
@@ -312,6 +332,8 @@ jobs:
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "image_tag=${ACR_LOGIN_SERVER}/momo-splitwise-backend:${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
           echo "image_tag_latest=${ACR_LOGIN_SERVER}/momo-splitwise-backend:latest" >> $GITHUB_OUTPUT
+          echo "frontend_image_tag=${ACR_LOGIN_SERVER}/momo-splitwise-frontend:${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          echo "frontend_image_tag_latest=${ACR_LOGIN_SERVER}/momo-splitwise-frontend:latest" >> $GITHUB_OUTPUT
           echo "✅ Using ACR: $ACR_NAME ($ACR_LOGIN_SERVER)"
 
       - name: Install Ansible
@@ -400,6 +422,7 @@ jobs:
           acr_resource_group: ${{ secrets.ACR_RESOURCE_GROUP }}
           acr_login_server: ${{ steps.acr-details.outputs.acr_login_server }}
           image_tag: ${{ steps.acr-details.outputs.image_tag_latest }}
+          frontend_image_tag: ${{ steps.acr-details.outputs.frontend_image_tag_latest }}
           app_name: momo-splitwise
           app_environment: prod
           docker_compose_version: "2.24.0"
@@ -414,7 +437,7 @@ jobs:
           ansible-playbook \
             -i inventory/production.yml \
             playbooks/deploy.yml \
-            --extra-vars "image_tag=${{ steps.acr-details.outputs.image_tag_latest }}" \
+            --extra-vars "image_tag=${{ steps.acr-details.outputs.image_tag_latest }} frontend_image_tag=${{ steps.acr-details.outputs.frontend_image_tag_latest }}" \
             -v
         continue-on-error: false
 
@@ -437,7 +460,7 @@ jobs:
           echo "🔍 Checking health endpoint: ${GATEWAY_URL}/health"
           echo "ℹ️ Note: Application Gateway may take 15-30 minutes to fully provision after Terraform apply"
           
-          MAX_RETRIES=20
+          MAX_RETRIES=3
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do

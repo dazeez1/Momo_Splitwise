@@ -67,7 +67,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user?.id) return;
 
     // Initialize Socket.io connection
-    const newSocket = io("http://localhost:3001", {
+    // Use environment variable for Socket URL, fallback to localhost for development
+    const socketURL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:5001";
+    const newSocket = io(socketURL, {
       transports: ["websocket"],
       withCredentials: true,
     });

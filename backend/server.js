@@ -37,7 +37,14 @@ const PORT = process.env.PORT || 5001;
 app.use(helmet());
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5174"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5174",
+      "http://localhost:5173",
+      "http://158.158.49.253:5001",
+      "http://68.221.206.80",
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
