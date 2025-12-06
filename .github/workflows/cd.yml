@@ -281,16 +281,38 @@ jobs:
       - name: Get ACR details
         id: acr-details
         run: |
-          ACR_NAME="${{ secrets.ACR_NAME }}"
-          ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
-          if [ -z "$ACR_NAME" ] || [ -z "$ACR_LOGIN_SERVER" ]; then
-            echo "❌ ACR_NAME and ACR_LOGIN_SERVER must be set in GitHub secrets"
-            exit 1
+          RG_NAME="${{ secrets.ACR_RESOURCE_GROUP }}"
+          if [ -z "$RG_NAME" ]; then
+            RG_NAME="momo-splitwise-prod-rg"
           fi
+          
+          # Try to get ACR from Azure directly (most reliable)
+          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query "[0].name" -o tsv 2>/dev/null || echo "")
+          ACR_LOGIN_SERVER=$(az acr list --resource-group "$RG_NAME" --query "[0].loginServer" -o tsv 2>/dev/null || echo "")
+          
+          # Fallback to secrets
+          if [ -z "$ACR_NAME" ] || [ "$ACR_NAME" = "null" ]; then
+            ACR_NAME="${{ secrets.ACR_NAME }}"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ "$ACR_LOGIN_SERVER" = "null" ]; then
+            ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
+          fi
+          
+          # Final fallback to known correct values
+          if [ -z "$ACR_NAME" ] || [ "$ACR_NAME" = "null" ]; then
+            ACR_NAME="momosplitwiseprodacr"
+            echo "⚠️ Using hardcoded ACR name: $ACR_NAME"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ "$ACR_LOGIN_SERVER" = "null" ]; then
+            ACR_LOGIN_SERVER="momosplitwiseprodacr.azurecr.io"
+            echo "⚠️ Using hardcoded ACR login server: $ACR_LOGIN_SERVER"
+          fi
+          
           echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "image_tag=${ACR_LOGIN_SERVER}/momo-splitwise-backend:${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
           echo "image_tag_latest=${ACR_LOGIN_SERVER}/momo-splitwise-backend:latest" >> $GITHUB_OUTPUT
+          echo "✅ Using ACR: $ACR_NAME ($ACR_LOGIN_SERVER)"
 
       - name: Install Ansible
         run: |
