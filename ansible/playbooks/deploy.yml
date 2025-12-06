@@ -107,7 +107,7 @@
       ignore_errors: yes
 
     - name: Verify containers are running
-      command: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+      shell: docker ps
       register: running_containers
       changed_when: false
 
