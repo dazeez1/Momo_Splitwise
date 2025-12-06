@@ -12,8 +12,9 @@ RUN npm ci
 # Copy frontend source
 COPY momo_splitwise/ .
 
-# Build frontend (skip type checking for faster build)
-RUN npm run build -- --mode production || npm run build
+# Build frontend (skip TypeScript checking - build directly with vite)
+# Using vite build directly instead of npm run build to skip tsc
+RUN npx vite build --mode production
 
 # Backend stage
 FROM node:18-alpine
