@@ -205,7 +205,6 @@ resource "azurerm_application_gateway" "main" {
     name                = "${var.project_name}-backend-health-probe"
     protocol            = "Http"
     path                = "/health"
-    host                = "127.0.0.1"
     interval            = 30
     timeout             = 30
     unhealthy_threshold = 3

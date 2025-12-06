@@ -434,12 +434,16 @@ jobs:
             exit 0
           fi
           
-          echo "🔍 Checking health endpoint..."
-          MAX_RETRIES=10
+          echo "🔍 Checking health endpoint: ${GATEWAY_URL}/health"
+          echo "ℹ️ Note: Application Gateway may take 15-30 minutes to fully provision after Terraform apply"
+          
+          MAX_RETRIES=20
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${GATEWAY_URL}/health" || echo "000")
+            # Try to get HTTP code with verbose error info
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 --connect-timeout 5 "${GATEWAY_URL}/health" 2>&1 | tail -1 || echo "000")
+            CURL_ERROR=$?
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Health check passed! Application is responding."
@@ -448,10 +452,31 @@ jobs:
             fi
             
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed (HTTP $HTTP_CODE). Retrying in 15 seconds..."
-            sleep 15
+            
+            # Provide more detailed error info
+            if [ "$HTTP_CODE" = "000" ]; then
+              echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed (Connection timeout/unreachable)."
+              echo "   This may indicate Application Gateway is still provisioning or network issues."
+            else
+              echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed (HTTP $HTTP_CODE)."
+            fi
+            
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "   Retrying in 30 seconds..."
+              sleep 30
+            fi
           done
           
           echo "❌ Health check failed after $MAX_RETRIES attempts"
-          echo "⚠️ Deployment may have succeeded but health check is failing. Please verify manually."
+          echo "⚠️ Possible causes:"
+          echo "   1. Application Gateway is still provisioning (can take 15-30 minutes)"
+          echo "   2. Backend containers are not running or not healthy"
+          echo "   3. Network Security Group rules may be blocking traffic"
+          echo "   4. Application Gateway health probe configuration issue"
+          echo ""
+          echo "💡 To verify manually:"
+          echo "   - Check Application Gateway status in Azure Portal"
+          echo "   - Verify backend health: az network application-gateway show-backend-health"
+          echo "   - Check if containers are running on the VM"
+          echo "   - Verify NSG rules allow traffic from Application Gateway subnet"
           exit 0  # Don't fail the workflow, just warn
