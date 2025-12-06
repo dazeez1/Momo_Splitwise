@@ -3,7 +3,7 @@ version: '3.8'
 
 services:
   backend:
-    image: "{{ image_tag | default(acr_login_server + '/momo-splitwise-backend:latest') }}"
+    image: "{{ image_tag | default((acr_login_server | default('momosplitwiseprodacr.azurecr.io')) + '/momo-splitwise-backend:latest') }}"
     container_name: momo-splitwise-backend
     restart: always
     ports:

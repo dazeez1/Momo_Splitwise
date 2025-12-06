@@ -24,14 +24,15 @@
       failed_when: false
       changed_when: false
 
-    - name: Set ACR name variable with default
+    - name: Set ACR variables with defaults
       set_fact:
         acr_name_actual: "{{ acr_name | default('momosplitwiseprodacr') }}"
+        acr_login_server_actual: "{{ acr_login_server | default('momosplitwiseprodacr.azurecr.io') }}"
         
     - name: Login to ACR manually (if service not available)
       shell: |
         az login --identity --allow-no-subscriptions || true
-        az acr login --name {{ acr_name_actual }}
+        az acr login --name {{ acr_name_actual }} || true
       when: acr_service_status.failed
       failed_when: false
       changed_when: false
@@ -40,9 +41,10 @@
     - name: Ensure ACR authentication before pulling images
       shell: |
         az login --identity --allow-no-subscriptions || true
-        az acr login --name {{ acr_name_actual }}
+        az acr login --name {{ acr_name_actual }} || true
       failed_when: false
       changed_when: false
+      ignore_errors: yes
 
     - name: Copy Docker Compose file
       template:
