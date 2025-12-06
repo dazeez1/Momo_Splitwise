@@ -53,6 +53,8 @@
         mode: "0644"
         owner: azureuser
         group: azureuser
+      vars:
+        acr_login_server: "{{ acr_login_server_actual }}"
 
     - name: Create .env.production file
       copy:
