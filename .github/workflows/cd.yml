@@ -190,7 +190,7 @@ jobs:
           echo "  - ${{ steps.acr-vars.outputs.image_tag }}"
           echo "  - ${{ steps.acr-vars.outputs.image_tag_latest }}"
           echo "✅ Frontend image pushed successfully:"
-          echo "  - ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:${GITHUB_SHA::8}"
+          echo "  - ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:${{ github.sha }}"
           echo "  - ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:latest"
 
   # Deploy to Azure VM using Ansible
