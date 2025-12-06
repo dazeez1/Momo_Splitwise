@@ -71,34 +71,27 @@
       no_log: true
 
     - name: Pull latest images from ACR
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_dir }}"
-        files:
-          - "{{ docker_compose_file }}"
-        pull: always
-        env_files:
-          - "{{ app_dir }}/.env.production"
+      shell: |
+        docker compose -f {{ docker_compose_file }} --env-file {{ app_dir }}/.env.production pull
+      args:
+        chdir: "{{ app_dir }}"
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
 
-    - name: Stop existing containers
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_dir }}"
-        files:
-          - "{{ docker_compose_file }}"
-        state: stopped
+    - name: Stop and remove existing containers
+      shell: |
+        docker compose -f {{ docker_compose_file }} --env-file {{ app_dir }}/.env.production down
+      args:
+        chdir: "{{ app_dir }}"
       ignore_errors: yes
+      environment:
+        COMPOSE_PROJECT_NAME: momo-splitwise
 
     - name: Start containers with docker-compose
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_dir }}"
-        files:
-          - "{{ docker_compose_file }}"
-        state: present
-        recreate: always
-        remove_orphans: yes
-        env_files:
-          - "{{ app_dir }}/.env.production"
+      shell: |
+        docker compose -f {{ docker_compose_file }} --env-file {{ app_dir }}/.env.production up -d --force-recreate --remove-orphans
+      args:
+        chdir: "{{ app_dir }}"
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
 
