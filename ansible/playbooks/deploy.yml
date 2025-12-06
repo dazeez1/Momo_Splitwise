@@ -87,6 +87,21 @@
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
 
+    - name: Check and stop service using port 80
+      shell: |
+        # Check if something is using port 80
+        if lsof -i :80 > /dev/null 2>&1 || ss -tuln | grep -q ':80 '; then
+          echo "Port 80 is in use, checking what's using it..."
+          # Try to find and stop nginx or apache
+          sudo systemctl stop nginx 2>/dev/null || true
+          sudo systemctl stop apache2 2>/dev/null || true
+          sudo systemctl stop httpd 2>/dev/null || true
+          # Kill any process using port 80
+          sudo fuser -k 80/tcp 2>/dev/null || true
+          sleep 2
+        fi
+      ignore_errors: yes
+
     - name: Start containers with docker-compose
       shell: |
         docker compose -f {{ docker_compose_file }} --env-file {{ app_dir }}/.env.production up -d --force-recreate --remove-orphans
