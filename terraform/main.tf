@@ -205,23 +205,23 @@ resource "azurerm_application_gateway" "main" {
     name                = "${var.project_name}-backend-health-probe"
     protocol            = "Http"
     path                = "/health"
-    host                = "127.0.0.1"
     interval            = 30
     timeout             = 30
     unhealthy_threshold = 3
     match {
       status_code = ["200"]
     }
-    pick_host_name_from_backend_http_settings = false
+    pick_host_name_from_backend_http_settings = true
   }
 
   backend_http_settings {
-    name                  = "${var.project_name}-backend-http-settings"
-    cookie_based_affinity = "Disabled"
-    port                  = 5001
-    protocol              = "Http"
-    request_timeout       = 20
-    probe_name            = "${var.project_name}-backend-health-probe"
+    name                                = "${var.project_name}-backend-http-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 5001
+    protocol                            = "Http"
+    request_timeout                     = 20
+    probe_name                          = "${var.project_name}-backend-health-probe"
+    pick_host_name_from_backend_address = true
   }
 
   backend_http_settings {
@@ -269,8 +269,10 @@ resource "azurerm_application_gateway" "main" {
 
   tags = local.common_tags
 
+  # Note: depends_on removed to allow Application Gateway creation
+  # when compute module has issues (e.g., bastion VM size unavailable)
+  # The Application Gateway only needs the network module which is already created
   depends_on = [
-    module.compute,
     module.network
   ]
 }

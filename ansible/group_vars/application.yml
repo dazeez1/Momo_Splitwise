@@ -5,7 +5,7 @@
 # Update these values after Terraform deployment:
 #   terraform output container_registry_name
 #   terraform output resource_group_name
-acr_name: "momosplitwiseprodacrzfbsm6"
+acr_name: "momosplitwiseprodacr"
 acr_resource_group: "momo-splitwise-prod-rg"
 
 # Docker Configuration

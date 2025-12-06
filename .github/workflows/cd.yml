@@ -3,7 +3,7 @@ name: Continuous Deployment (CD)
 
 on:
   push:
-    branches: [main]
+    branches: [main, Terraform]  # Allow CD on both main and Terraform branches
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -98,15 +98,38 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Get ACR details from Terraform
+      - name: Get ACR details from Azure
         id: get-acr
-        working-directory: terraform
         run: |
-          terraform init -backend=false
-          ACR_NAME=$(terraform output -raw container_registry_name 2>/dev/null || echo "${{ secrets.ACR_NAME }}")
-          ACR_LOGIN_SERVER=$(terraform output -raw container_registry_login_server 2>/dev/null || echo "${{ secrets.ACR_LOGIN_SERVER }}")
+          # Try to get ACR from Azure directly
+          RG_NAME="${{ secrets.ACR_RESOURCE_GROUP }}"
+          if [ -z "$RG_NAME" ]; then
+            RG_NAME="momo-splitwise-prod-rg"
+          fi
+          
+          # List ACRs in the resource group
+          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query "[0].name" -o tsv 2>/dev/null || echo "")
+          ACR_LOGIN_SERVER=$(az acr list --resource-group "$RG_NAME" --query "[0].loginServer" -o tsv 2>/dev/null || echo "")
+          
+          # Fallback to secrets if Azure query fails
+          if [ -z "$ACR_NAME" ]; then
+            ACR_NAME="${{ secrets.ACR_NAME }}"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ]; then
+            ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
+          fi
+          
+          # Final fallback to known correct values
+          if [ -z "$ACR_NAME" ] || [ "$ACR_NAME" = "null" ]; then
+            ACR_NAME="momosplitwiseprodacr"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ "$ACR_LOGIN_SERVER" = "null" ]; then
+            ACR_LOGIN_SERVER="momosplitwiseprodacr.azurecr.io"
+          fi
+          
           echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+          echo "✅ Using ACR: $ACR_NAME ($ACR_LOGIN_SERVER)"
         continue-on-error: true
 
       - name: Set ACR variables
@@ -258,16 +281,38 @@ jobs:
       - name: Get ACR details
         id: acr-details
         run: |
-          ACR_NAME="${{ secrets.ACR_NAME }}"
-          ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
-          if [ -z "$ACR_NAME" ] || [ -z "$ACR_LOGIN_SERVER" ]; then
-            echo "❌ ACR_NAME and ACR_LOGIN_SERVER must be set in GitHub secrets"
-            exit 1
+          RG_NAME="${{ secrets.ACR_RESOURCE_GROUP }}"
+          if [ -z "$RG_NAME" ]; then
+            RG_NAME="momo-splitwise-prod-rg"
           fi
+          
+          # Try to get ACR from Azure directly (most reliable)
+          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query "[0].name" -o tsv 2>/dev/null || echo "")
+          ACR_LOGIN_SERVER=$(az acr list --resource-group "$RG_NAME" --query "[0].loginServer" -o tsv 2>/dev/null || echo "")
+          
+          # Fallback to secrets
+          if [ -z "$ACR_NAME" ] || [ "$ACR_NAME" = "null" ]; then
+            ACR_NAME="${{ secrets.ACR_NAME }}"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ "$ACR_LOGIN_SERVER" = "null" ]; then
+            ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
+          fi
+          
+          # Final fallback to known correct values
+          if [ -z "$ACR_NAME" ] || [ "$ACR_NAME" = "null" ]; then
+            ACR_NAME="momosplitwiseprodacr"
+            echo "⚠️ Using hardcoded ACR name: $ACR_NAME"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ "$ACR_LOGIN_SERVER" = "null" ]; then
+            ACR_LOGIN_SERVER="momosplitwiseprodacr.azurecr.io"
+            echo "⚠️ Using hardcoded ACR login server: $ACR_LOGIN_SERVER"
+          fi
+          
           echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "image_tag=${ACR_LOGIN_SERVER}/momo-splitwise-backend:${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
           echo "image_tag_latest=${ACR_LOGIN_SERVER}/momo-splitwise-backend:latest" >> $GITHUB_OUTPUT
+          echo "✅ Using ACR: $ACR_NAME ($ACR_LOGIN_SERVER)"
 
       - name: Install Ansible
         run: |
@@ -389,12 +434,16 @@ jobs:
             exit 0
           fi
           
-          echo "🔍 Checking health endpoint..."
-          MAX_RETRIES=10
+          echo "🔍 Checking health endpoint: ${GATEWAY_URL}/health"
+          echo "ℹ️ Note: Application Gateway may take 15-30 minutes to fully provision after Terraform apply"
+          
+          MAX_RETRIES=20
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${GATEWAY_URL}/health" || echo "000")
+            # Try to get HTTP code with verbose error info
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 --connect-timeout 5 "${GATEWAY_URL}/health" 2>&1 | tail -1 || echo "000")
+            CURL_ERROR=$?
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Health check passed! Application is responding."
@@ -403,10 +452,31 @@ jobs:
             fi
             
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed (HTTP $HTTP_CODE). Retrying in 15 seconds..."
-            sleep 15
+            
+            # Provide more detailed error info
+            if [ "$HTTP_CODE" = "000" ]; then
+              echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed (Connection timeout/unreachable)."
+              echo "   This may indicate Application Gateway is still provisioning or network issues."
+            else
+              echo "⏳ Health check attempt $RETRY_COUNT/$MAX_RETRIES failed (HTTP $HTTP_CODE)."
+            fi
+            
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "   Retrying in 30 seconds..."
+              sleep 30
+            fi
           done
           
           echo "❌ Health check failed after $MAX_RETRIES attempts"
-          echo "⚠️ Deployment may have succeeded but health check is failing. Please verify manually."
+          echo "⚠️ Possible causes:"
+          echo "   1. Application Gateway is still provisioning (can take 15-30 minutes)"
+          echo "   2. Backend containers are not running or not healthy"
+          echo "   3. Network Security Group rules may be blocking traffic"
+          echo "   4. Application Gateway health probe configuration issue"
+          echo ""
+          echo "💡 To verify manually:"
+          echo "   - Check Application Gateway status in Azure Portal"
+          echo "   - Verify backend health: az network application-gateway show-backend-health"
+          echo "   - Check if containers are running on the VM"
+          echo "   - Verify NSG rules allow traffic from Application Gateway subnet"
           exit 0  # Don't fail the workflow, just warn
