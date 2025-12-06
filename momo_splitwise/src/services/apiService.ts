@@ -115,7 +115,7 @@ class ApiService {
               if (!retryResponse.ok) {
                 throw new Error(retryText || "Request failed");
               }
-              return { message: retryText };
+              return { message: retryText } as T;
             }
           }
         }
@@ -574,18 +574,18 @@ class ApiService {
    * Get balances for a specific group
    */
   async getGroupBalances(groupId: string): Promise<{ balances: any[] }> {
-    const response = await this.makeRequest(`/balances/group/${groupId}`);
-    return response.data || response;
+    const response = await this.makeRequest<{ balances?: any[]; data?: { balances: any[] } }>(`/balances/group/${groupId}`);
+    return (response as any).data || response as { balances: any[] };
   }
 
   /**
    * Get simplified debts for a specific group
    */
   async getSimplifiedDebts(groupId: string): Promise<{ debts: any[] }> {
-    const response = await this.makeRequest(
+    const response = await this.makeRequest<{ debts?: any[]; data?: { debts: any[] } }>(
       `/balances/group/${groupId}/simplify`
     );
-    return response.data || response;
+    return (response as any).data || response as { debts: any[] };
   }
 
   // Invitation Methods

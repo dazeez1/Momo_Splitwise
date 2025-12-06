@@ -240,11 +240,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 
 interface AppContextType extends AppState {
   addGroup: (
-    group: Omit<Group, "id" | "createdAt" | "createdBy">
+    group: Omit<Group, "id" | "createdAt" | "createdBy"> & { memberEmails?: string[] }
   ) => Promise<Group>;
   updateGroup: (group: Group) => Promise<Group>;
   deleteGroup: (groupId: string) => Promise<void>;
   loadGroups: () => Promise<void>;
+  loadExpenses: () => Promise<void>;
+  loadPayments: () => Promise<void>;
   addExpense: (expense: Omit<Expense, "id" | "createdAt">) => Promise<Expense>;
   updateExpense: (expense: Expense) => Promise<Expense>;
   deleteExpense: (expenseId: string) => Promise<void>;
@@ -274,7 +276,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   // Load groups from API
   const loadGroups = async () => {
     try {
-      const response = await apiService.getGroups();
+      const response = await apiService.getGroups() as any;
 
       // Handle both response formats: {data: {groups}} or {groups}
       const groups = response.data?.groups || response.groups || [];
@@ -304,7 +306,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   // Load users from API
   const loadUsers = async () => {
     try {
-      const response = await apiService.getUsers();
+      const response = await apiService.getUsers() as any;
 
       // Handle both response formats: {data: {users}} or {users}
       const users = response.data?.users || response.users || [];
@@ -329,7 +331,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   // Load expenses from API
   const loadExpenses = async () => {
     try {
-      const response = await apiService.getExpenses();
+      const response = await apiService.getExpenses() as any;
       const expenses = response.data?.expenses || response.expenses || [];
 
       // Transform MongoDB expenses to frontend format
@@ -362,7 +364,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   // Load payments from API
   const loadPayments = async () => {
     try {
-      const response = await apiService.getPayments();
+      const response = await apiService.getPayments() as any;
       const payments = response.data?.payments || response.payments || [];
 
       // Transform MongoDB payments to frontend format
@@ -422,7 +424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     try {
       console.log("Sending group data to API:", groupData);
-      const response = await apiService.createGroup(groupData);
+      const response = await apiService.createGroup(groupData) as any;
 
       // Handle both response formats: {data: {group}} or {group}
       const group = response.data?.group || response.group;
@@ -508,7 +510,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         paidBy: expenseData.paidBy,
       };
 
-      const response = await apiService.createExpense(apiData);
+      const response = await apiService.createExpense(apiData) as any;
       const expense = response.data?.expense || response.expense;
 
       if (!expense || !expense._id) {
@@ -558,7 +560,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         paidBy: expense.paidBy,
       };
 
-      const response = await apiService.updateExpense(expense.id, apiData);
+      const response = await apiService.updateExpense(expense.id, apiData) as any;
       const updatedExpense = response.data?.expense || response.expense;
 
       if (!updatedExpense || !updatedExpense._id) {

@@ -177,7 +177,7 @@ const Payments: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: PaymentRequest["status"]) => {
+  const getStatusIcon = (status: Payment["status"] | string) => {
     switch (status) {
       case "completed":
         return <CheckCircle className="h-5 w-5 text-green-500" />;
@@ -194,7 +194,7 @@ const Payments: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: PaymentRequest["status"]) => {
+  const getStatusColor = (status: Payment["status"] | string) => {
     switch (status) {
       case "completed":
         return "text-green-700 bg-green-50 border-green-200";
