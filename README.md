@@ -24,6 +24,15 @@ A modern expense splitting application with mobile money integration, designed t
 - [Contributing](#contributing)
 - [License](#license)
 
+## 🌐 Live Application
+
+**Production URL:** [http://68.221.206.80](http://68.221.206.80)
+
+- **Health Check:** [http://68.221.206.80/health](http://68.221.206.80/health)
+- **API Base URL:** [http://68.221.206.80/api](http://68.221.206.80/api)
+
+> **Note:** The Application Gateway may take 15-30 minutes to fully provision. If you encounter connection issues, please wait a few minutes and try again.
+
 ## Overview
 
 Momo Splitwise is a full-stack web application that simplifies expense management for groups. Whether you're splitting bills with roommates, tracking expenses on a trip, or managing a savings group (chama), Momo Splitwise makes it easy to:
@@ -409,9 +418,9 @@ The CD pipeline automatically deploys when code is merged to `main`:
 
 After deployment, access the application via:
 
-- **Application Gateway URL**: `http://<gateway-ip>`
-- **Health Check**: `http://<gateway-ip>/health`
-- **API Endpoints**: `http://<gateway-ip>/api/*`
+- **Application Gateway URL**: [http://68.221.206.80](http://68.221.206.80)
+- **Health Check**: [http://68.221.206.80/health](http://68.221.206.80/health)
+- **API Endpoints**: [http://68.221.206.80/api/\*](http://68.221.206.80/api/)
 
 Get the Application Gateway IP:
 
@@ -420,12 +429,14 @@ cd terraform
 terraform output application_gateway_public_ip
 ```
 
+**Current Production IP:** `68.221.206.80`
+
 ## API Documentation
 
 ### Base URL
 
 - **Local**: `http://localhost:5001`
-- **Production**: `http://<application-gateway-ip>/api`
+- **Production**: [http://68.221.206.80/api](http://68.221.206.80/api)
 
 ### Authentication
 
@@ -596,87 +607,97 @@ Contributions are welcome! Please follow these guidelines:
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-# MoMo Splitwise  
-**Tagline:** *"Split bills, keep friends."*  
+
+# MoMo Splitwise
+
+**Tagline:** _"Split bills, keep friends."_
 
 ---
 
-## Project Overview  
+## Project Overview
 
-**MoMo Splitwise** is a web-based application designed to help groups — such as friends, roommates, or informal savings groups — easily track shared expenses and split costs fairly using mobile money.  
+**MoMo Splitwise** is a web-based application designed to help groups — such as friends, roommates, or informal savings groups — easily track shared expenses and split costs fairly using mobile money.
 
-The project aims to address a common problem faced by many young Africans: the difficulty of managing shared expenses transparently in group settings. By integrating mobile money functionality, MoMo Splitwise promotes accountability, fairness, and financial clarity among group members.  
+The project aims to address a common problem faced by many young Africans: the difficulty of managing shared expenses transparently in group settings. By integrating mobile money functionality, MoMo Splitwise promotes accountability, fairness, and financial clarity among group members.
 
 ---
 
-## Problem Statement  
+## Problem Statement
 
 Groups like university students, roommates, and chamas (informal savings groups) often struggle to track shared expenses and ensure fair cost distribution. Without proper tools, this process can lead to misunderstandings and financial disputes. **MoMo Splitwise** simplifies this by allowing users to record expenses, calculate balances, and generate mobile money payment links — all in one platform.
 
 ---
 
-## Target Users  
+## Target Users
 
-- University students  
-- Shared housing or roommate groups  
-- Informal savings groups (chamas)  
-- Small social groups managing shared funds  
-
----
-
-## Core Features  
-
-- Create and manage expense groups  
-- Add expenses and assign split percentages  
-- Automatically calculate who owes whom  
-- Generate mobile money payment links  
-- View expense history and reports  
+- University students
+- Shared housing or roommate groups
+- Informal savings groups (chamas)
+- Small social groups managing shared funds
 
 ---
 
-## Tech Stack  
+## Core Features
 
-| Layer | Technology |
-|-------|-------------|
-| **Frontend** | React (Vite) + Tailwind CSS |
-| **Backend** | Node.js (Express.js) |
-| **Database** | MongoDB |
-| **Containerization** | Docker + Docker Compose |
-| **CI/CD** | GitHub Actions |
+- Create and manage expense groups
+- Add expenses and assign split percentages
+- Automatically calculate who owes whom
+- Generate mobile money payment links
+- View expense history and reports
 
 ---
 
-## Setup Instructions  
+## Tech Stack
 
-### Prerequisites  
-Ensure you have the following installed:  
-- [Node.js](https://nodejs.org/)  
-- [Docker](https://www.docker.com/) and Docker Compose  
-- [Git](https://git-scm.com/)  
+| Layer                | Technology                  |
+| -------------------- | --------------------------- |
+| **Frontend**         | React (Vite) + Tailwind CSS |
+| **Backend**          | Node.js (Express.js)        |
+| **Database**         | MongoDB                     |
+| **Containerization** | Docker + Docker Compose     |
+| **CI/CD**            | GitHub Actions              |
+
+---
+
+## Setup Instructions
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+- [Node.js](https://nodejs.org/)
+- [Docker](https://www.docker.com/) and Docker Compose
+- [Git](https://git-scm.com/)
 
 ---
 
 ### Running the App (Local Development)
 
-1. **Clone the repository:**  
+1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/dazeez1/Momo_Splitwise.git
    cd momo_splitwise
 
    Backend setup:
 
+   ```
+
 2. **cd backend**
+
 ```bash
 npm install
 npm start
 ```
 
 3. **Frontend setup:**
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
 ---
 
 Access the app:
@@ -687,9 +708,11 @@ Visit http://localhost:5173 (frontend) and http://localhost:5000 (backend API).
 **Running with Docker Compose**
 
 To run both frontend and backend containers together:
+
 ```bash
 docker compose up --build
 ```
+
 ---
 
 ## Once running:
@@ -697,7 +720,7 @@ docker compose up --build
 - Frontend: http://localhost:5173
 
 - Backend API: http://localhost:5000
-  
+
 ---
 
 ## Continuous Integration (CI)
@@ -716,14 +739,17 @@ The project includes a GitHub Actions CI pipeline that automatically:
 ✅ Branch protection rules ensure all checks pass before merging to main.
 
 ## Team Members
-|Name	 |Role|  
-|------|----------|
-|*Damilare Gbenga Azeez* |	Backend Developer && Quality Assurance| 
-|*Stella Remember Habiyambere*| DevOps Engineer && Documentation Lead|
-|*Daniel Iryivuze*|	 Frontend Developer && CI/CD Integrator|
+
+| Name                          | Role                                   |
+| ----------------------------- | -------------------------------------- |
+| _Damilare Gbenga Azeez_       | Backend Developer && Quality Assurance |
+| _Stella Remember Habiyambere_ | DevOps Engineer && Documentation Lead  |
+| _Daniel Iryivuze_             | Frontend Developer && CI/CD Integrator |
 
 ---
+
 # Project Phases
+
 ## Formative 1: Project Foundation
 
 - Defined project idea, context, and target users
@@ -753,7 +779,6 @@ The project includes a GitHub Actions CI pipeline that automatically:
 - All team members added as collaborators
 
 - GitHub Project board tracks all tasks and progress
-
 
 # Acknowledgments
 
