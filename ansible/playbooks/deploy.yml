@@ -6,7 +6,7 @@
   vars:
     app_dir: /opt/momo-splitwise
     docker_compose_file: docker-compose.prod.yml
-    acr_name: "{{ acr_name | default('momosplitwiseprodacrzfbsm6') }}"
+    acr_name: "{{ acr_name | default('momosplitwiseprodacr') }}"
 
   tasks:
     - name: Ensure app directory exists
@@ -28,7 +28,7 @@
     - name: Login to ACR manually (if service not available)
       shell: |
         az login --identity --allow-no-subscriptions || true
-        az acr login --name {{ acr_name | default('momosplitwiseprodacrzfbsm6') }}
+        az acr login --name {{ acr_name | default('momosplitwiseprodacr') }}
       when: acr_service_status.failed
       failed_when: false
       changed_when: false
