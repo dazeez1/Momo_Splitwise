@@ -420,7 +420,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   // }, [authUser]);
 
   const addGroup = async (
-    groupData: Omit<Group, "id" | "createdAt" | "createdBy">
+    groupData: Omit<Group, "id" | "createdAt" | "createdBy"> & { memberEmails?: string[] }
   ) => {
     try {
       console.log("Sending group data to API:", groupData);

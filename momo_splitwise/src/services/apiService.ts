@@ -115,7 +115,7 @@ class ApiService {
               if (!retryResponse.ok) {
                 throw new Error(retryText || "Request failed");
               }
-              return { message: retryText } as T;
+              return { message: retryText } as unknown as T;
             }
           }
         }
