@@ -90,16 +90,25 @@
     - name: Check and stop service using port 80
       shell: |
         # Check if something is using port 80
-        if lsof -i :80 > /dev/null 2>&1 || ss -tuln | grep -q ':80 '; then
-          echo "Port 80 is in use, checking what's using it..."
+        if ss -tuln | grep -q ':80 ' || lsof -i :80 > /dev/null 2>&1; then
+          echo "Port 80 is in use, freeing it..."
           # Try to find and stop nginx or apache
-          sudo systemctl stop nginx 2>/dev/null || true
-          sudo systemctl stop apache2 2>/dev/null || true
-          sudo systemctl stop httpd 2>/dev/null || true
-          # Kill any process using port 80
-          sudo fuser -k 80/tcp 2>/dev/null || true
+          systemctl stop nginx 2>/dev/null || true
+          systemctl stop apache2 2>/dev/null || true
+          systemctl stop httpd 2>/dev/null || true
+          # Find and kill any process using port 80
+          PID=$(ss -tuln | grep ':80 ' | awk '{print $5}' | cut -d: -f1 | head -1 || lsof -ti :80 | head -1)
+          if [ -n "$PID" ]; then
+            kill -9 $PID 2>/dev/null || true
+          fi
+          # Alternative: use fuser if available
+          fuser -k 80/tcp 2>/dev/null || true
           sleep 2
+          echo "Port 80 should now be free"
+        else
+          echo "Port 80 is free"
         fi
+      become: yes
       ignore_errors: yes
 
     - name: Start containers with docker-compose
