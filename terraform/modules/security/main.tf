@@ -90,6 +90,20 @@ resource "azurerm_network_security_group" "application" {
     description                = "Allow SSH access from Internet for GitHub Actions deployment"
   }
 
+  # TEMPORARY: Allow public access to backend for presentation (can be removed later)
+  security_rule {
+    name                       = "allow-public-backend-temporary"
+    priority                   = 1005
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "5001"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+    description                = "TEMPORARY: Allow public access to backend for presentation - remove after Application Gateway is ready"
+  }
+
   # Allow HTTP from Application Gateway
   security_rule {
     name                       = "allow-http-from-app-gateway"

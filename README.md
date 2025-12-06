@@ -26,12 +26,23 @@ A modern expense splitting application with mobile money integration, designed t
 
 ## 🌐 Live Application
 
+### Primary URL (Application Gateway - Recommended)
+
 **Production URL:** [http://68.221.206.80](http://68.221.206.80)
 
 - **Health Check:** [http://68.221.206.80/health](http://68.221.206.80/health)
 - **API Base URL:** [http://68.221.206.80/api](http://68.221.206.80/api)
 
 > **Note:** The Application Gateway may take 15-30 minutes to fully provision. If you encounter connection issues, please wait a few minutes and try again.
+
+### Direct Backend Access (Temporary - For Presentation)
+
+**Direct Backend URL:** [http://158.158.49.253:5001](http://158.158.49.253:5001)
+
+- **Health Check:** [http://158.158.49.253:5001/health](http://158.158.49.253:5001/health)
+- **API Base URL:** [http://158.158.49.253:5001/api](http://158.158.49.253:5001/api)
+
+> **Note:** Direct backend access is temporarily enabled for presentation purposes. Once the Application Gateway is fully provisioned, this direct access can be removed for better security.
 
 ## Overview
 
