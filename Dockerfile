@@ -1,3 +1,21 @@
+# Multi-stage build: Build frontend first, then backend
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+# Copy frontend package files
+COPY momo_splitwise/package*.json ./
+
+# Install frontend dependencies
+RUN npm ci
+
+# Copy frontend source
+COPY momo_splitwise/ .
+
+# Build frontend (skip type checking for faster build)
+RUN npm run build -- --mode production || npm run build
+
+# Backend stage
 FROM node:18-alpine
 
 WORKDIR /app
@@ -11,8 +29,8 @@ RUN npm ci --only=production
 # Copy app source
 COPY backend/ .
 
-# Copy frontend build files to public directory
-COPY momo_splitwise/dist ./public
+# Copy frontend build from builder stage
+COPY --from=frontend-builder /frontend/dist ./public
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
