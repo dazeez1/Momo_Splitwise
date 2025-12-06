@@ -179,7 +179,7 @@ jobs:
             VITE_API_URL=http://158.158.49.253:5001/api
             VITE_SOCKET_URL=http://158.158.49.253:5001
           tags: |
-            ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:${GITHUB_SHA::8}
+            ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:${{ github.sha }}
             ${{ steps.acr-vars.outputs.acr_login_server }}/momo-splitwise-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
