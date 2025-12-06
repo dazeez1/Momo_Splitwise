@@ -1,0 +1,40 @@
+# Production Inventory Template
+# Copy this file to production.yml and update with your actual values
+# 
+# Usage:
+#   - For direct connection: Use application_vm with public IP
+#   - For bastion host: Use application_vm with proxy_command via bastion
+
+all:
+  children:
+    bastion:
+      hosts:
+        bastion_host:
+          ansible_host: "YOUR_BASTION_IP"  # Bastion Host public IP
+          ansible_user: azureuser
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ConnectTimeout=60 -o ServerAliveInterval=30'
+    
+    application:
+      hosts:
+        application_vm:
+          # Option 1: Direct connection (if VM has public IP and NSG allows)
+          ansible_host: "YOUR_APPLICATION_VM_IP"  # Application VM public IP
+          ansible_user: azureuser
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes'
+          
+          # Option 2: Via bastion host (uncomment if needed)
+          # ansible_host: "YOUR_APPLICATION_VM_PRIVATE_IP"  # Application VM private IP
+          # ansible_user: azureuser
+          # ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          # ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ConnectTimeout=60'
+          # ansible_ssh_common_args: '-o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no azureuser@YOUR_BASTION_IP"'
+
+  vars:
+    # Common variables for all hosts
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_connection: ssh
+    ansible_ssh_retries: 3
+    ansible_timeout: 60
+

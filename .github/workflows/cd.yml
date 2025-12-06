@@ -164,7 +164,59 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.APPLICATION_VM_IP }} >> ~/.ssh/known_hosts || true
+          
+          # Configure SSH for better connection reliability
+          cat >> ~/.ssh/config <<EOF
+          Host ${{ secrets.APPLICATION_VM_IP }}
+            User azureuser
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking no
+            UserKnownHostsFile ~/.ssh/known_hosts
+            ConnectTimeout 60
+            ServerAliveInterval 30
+            ServerAliveCountMax 3
+            TCPKeepAlive yes
+          EOF
+          
+          # Add host to known_hosts
+          ssh-keyscan -H ${{ secrets.APPLICATION_VM_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Verify SSH key format
+          if ! ssh-keygen -l -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "❌ SSH private key is invalid or corrupted"
+            exit 1
+          fi
+          
+          echo "✅ SSH key configured successfully"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Check VM Status
+        run: |
+          VM_IP="${{ secrets.APPLICATION_VM_IP }}"
+          RG_NAME="${{ secrets.ACR_RESOURCE_GROUP }}"
+          
+          echo "🔍 Checking VM status..."
+          
+          # Try to find VM by public IP
+          if [ -n "$RG_NAME" ]; then
+            echo "Checking VMs in resource group: $RG_NAME"
+            az vm list --resource-group "$RG_NAME" --show-details --query '[].{Name:name, PowerState:powerState, PublicIP:publicIps}' -o table || echo "⚠️ Could not list VMs"
+            
+            # Check if any VM is stopped
+            STOPPED_VMS=$(az vm list --resource-group "$RG_NAME" --show-details --query "[?powerState=='VM stopped'].name" -o tsv 2>/dev/null || echo "")
+            if [ -n "$STOPPED_VMS" ]; then
+              echo "⚠️ Warning: Found stopped VMs:"
+              echo "$STOPPED_VMS"
+              echo "Consider starting them if deployment fails"
+            fi
+          fi
+          
+          echo "Target VM IP: $VM_IP"
+          echo ""
 
       - name: Get ACR details
         id: acr-details
@@ -189,6 +241,54 @@ jobs:
         run: |
           ansible-galaxy collection install community.docker
 
+      - name: Test SSH connection
+        run: |
+          VM_IP="${{ secrets.APPLICATION_VM_IP }}"
+          echo "🔍 Testing SSH connection to $VM_IP..."
+          
+          # Test basic connectivity
+          if ! timeout 10 ping -c 3 $VM_IP > /dev/null 2>&1; then
+            echo "⚠️ Ping test failed, but continuing (ICMP may be blocked)"
+          else
+            echo "✅ Ping test passed"
+          fi
+          
+          # Test SSH port connectivity
+          if ! timeout 10 nc -zv -w 5 $VM_IP 22 2>&1; then
+            echo "❌ Cannot connect to SSH port 22 on $VM_IP"
+            echo "This could indicate:"
+            echo "  - VM is not running"
+            echo "  - NSG rules are blocking SSH"
+            echo "  - Public IP is incorrect"
+            echo "  - Firewall is blocking the connection"
+            exit 1
+          else
+            echo "✅ SSH port 22 is reachable"
+          fi
+          
+          # Test SSH authentication
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if timeout 60 ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -o UserKnownHostsFile=~/.ssh/known_hosts azureuser@$VM_IP "echo 'SSH connection successful'" 2>&1; then
+              echo "✅ SSH authentication successful"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⏳ SSH connection attempt $RETRY_COUNT failed, retrying in 10 seconds..."
+                sleep 10
+              else
+                echo "❌ SSH authentication failed after $MAX_RETRIES attempts"
+                echo "Please verify:"
+                echo "  - SSH_PRIVATE_KEY secret is correct"
+                echo "  - VM is running and accessible"
+                echo "  - NSG rules allow SSH from GitHub Actions IPs"
+                exit 1
+              fi
+            fi
+          done
+
       - name: Create Ansible inventory
         run: |
           mkdir -p ansible/inventory
@@ -201,10 +301,12 @@ jobs:
                     ansible_host: ${{ secrets.APPLICATION_VM_IP }}
                     ansible_user: azureuser
                     ansible_ssh_private_key_file: ~/.ssh/id_rsa
-                    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+                    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes'
             vars:
               ansible_python_interpreter: /usr/bin/python3
               ansible_connection: ssh
+              ansible_ssh_retries: 3
+              ansible_timeout: 60
           EOF
 
       - name: Create Ansible group vars
@@ -226,10 +328,13 @@ jobs:
       - name: Run Ansible deployment playbook
         working-directory: ansible
         run: |
+          echo "🚀 Starting Ansible deployment..."
           ansible-playbook \
             -i inventory/production.yml \
             playbooks/deploy.yml \
-            --extra-vars "image_tag=${{ steps.acr-details.outputs.image_tag_latest }}"
+            --extra-vars "image_tag=${{ steps.acr-details.outputs.image_tag_latest }}" \
+            -v
+        continue-on-error: false
 
       - name: Verify deployment
         run: |

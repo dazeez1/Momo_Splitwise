@@ -2,7 +2,10 @@
 
 # Inventory files with sensitive data
 inventory/hosts.yml
+inventory/production.yml
 !inventory/hosts.yml.example
+!inventory/production.yml.example
+
 
 # Ansible vault files
 *.vault
