@@ -105,14 +105,15 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/balances", balanceRoutes);
 
-// Serve frontend static files in production
+// Serve frontend static files in production (if they exist)
+// Frontend can be built separately and copied to the public directory
 if (process.env.NODE_ENV === "production") {
   const path = require("path");
-  const frontendPath = path.join(__dirname, "../public");
   const fs = require("fs");
+  const frontendPath = path.join(__dirname, "../public");
   
-  // Check if frontend files exist
-  if (fs.existsSync(frontendPath)) {
+  // Check if frontend files exist (optional - frontend can be built separately)
+  if (fs.existsSync(frontendPath) && fs.existsSync(path.join(frontendPath, "index.html"))) {
     // Serve static files from the React app
     app.use(express.static(frontendPath));
     // Handle React routing, return all requests to React app (except API routes)
