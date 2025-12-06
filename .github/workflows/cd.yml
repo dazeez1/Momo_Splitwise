@@ -98,15 +98,38 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Get ACR details from Terraform
+      - name: Get ACR details from Azure
         id: get-acr
-        working-directory: terraform
         run: |
-          terraform init -backend=false
-          ACR_NAME=$(terraform output -raw container_registry_name 2>/dev/null || echo "${{ secrets.ACR_NAME }}")
-          ACR_LOGIN_SERVER=$(terraform output -raw container_registry_login_server 2>/dev/null || echo "${{ secrets.ACR_LOGIN_SERVER }}")
+          # Try to get ACR from Azure directly
+          RG_NAME="${{ secrets.ACR_RESOURCE_GROUP }}"
+          if [ -z "$RG_NAME" ]; then
+            RG_NAME="momo-splitwise-prod-rg"
+          fi
+          
+          # List ACRs in the resource group
+          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query "[0].name" -o tsv 2>/dev/null || echo "")
+          ACR_LOGIN_SERVER=$(az acr list --resource-group "$RG_NAME" --query "[0].loginServer" -o tsv 2>/dev/null || echo "")
+          
+          # Fallback to secrets if Azure query fails
+          if [ -z "$ACR_NAME" ]; then
+            ACR_NAME="${{ secrets.ACR_NAME }}"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ]; then
+            ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
+          fi
+          
+          # Final fallback to known correct values
+          if [ -z "$ACR_NAME" ] || [ "$ACR_NAME" = "null" ]; then
+            ACR_NAME="momosplitwiseprodacr"
+          fi
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ "$ACR_LOGIN_SERVER" = "null" ]; then
+            ACR_LOGIN_SERVER="momosplitwiseprodacr.azurecr.io"
+          fi
+          
           echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+          echo "✅ Using ACR: $ACR_NAME ($ACR_LOGIN_SERVER)"
         continue-on-error: true
 
       - name: Set ACR variables
