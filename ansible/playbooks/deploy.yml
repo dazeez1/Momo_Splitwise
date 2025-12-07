@@ -127,7 +127,7 @@
       changed_when: false
 
     - name: Check container status immediately
-      shell: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+      shell: docker ps
       register: container_status
       changed_when: false
 
