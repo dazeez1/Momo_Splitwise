@@ -140,6 +140,7 @@ const connectDatabase = async () => {
     console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
     console.log(`🌐 Host: ${mongoose.connection.host}`);
   } catch (error) {
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGODB_URL;
     console.error("❌ MongoDB connection error:", error.message);
     console.error("💡 MongoDB URI:", mongoUri ? mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@') : 'Not set');
     console.error("💡 Error details:", error);
