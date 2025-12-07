@@ -74,7 +74,7 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-yellow-600 to-yellow-700 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-2xl p-8">
         {/* Header */}
         <div className="text-center">
