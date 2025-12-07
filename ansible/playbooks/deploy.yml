@@ -135,22 +135,23 @@
       debug:
         msg: "{{ container_status.stdout_lines }}"
 
-    - name: Check backend container logs if not running
+    - name: Check backend container status and logs
       shell: |
-        if ! docker ps | grep -q momo-splitwise-backend; then
-          echo "=== Backend container is not running ==="
-          docker logs momo-splitwise-backend --tail 50 2>&1 || echo "Container doesn't exist"
-        else
-          echo "Backend container is running"
-          docker logs momo-splitwise-backend --tail 20
-        fi
-      register: backend_logs
+        echo "=== Backend Container Status ==="
+        docker ps -a | grep momo-splitwise-backend || echo "Container not found"
+        echo ""
+        echo "=== Backend Container Logs (last 50 lines) ==="
+        docker logs momo-splitwise-backend --tail 50 2>&1 || echo "Cannot retrieve logs"
+        echo ""
+        echo "=== Testing backend from inside VM ==="
+        curl -s http://localhost:5001/health || echo "Backend not responding on localhost:5001"
+      register: backend_status
       failed_when: false
       ignore_errors: yes
 
-    - name: Display backend logs
+    - name: Display backend status
       debug:
-        msg: "{{ backend_logs.stdout_lines }}"
+        msg: "{{ backend_status.stdout_lines }}"
 
     - name: Wait for backend to be healthy
       uri:
@@ -175,6 +176,42 @@
         msg:
           - "Backend container status: {{ backend_health_status.stdout }}"
           - "If status is not 'running', check logs above"
+
+    - name: Restart backend if not responding
+      shell: |
+        # Check if backend is responding
+        if ! curl -f -s http://localhost:5001/health > /dev/null 2>&1; then
+          echo "Backend not responding, restarting..."
+          docker restart momo-splitwise-backend || docker compose -f {{ docker_compose_file }} --env-file {{ app_dir }}/.env.production restart backend
+          sleep 10
+          echo "Backend restarted, waiting for it to be ready..."
+        else
+          echo "Backend is responding"
+        fi
+      args:
+        chdir: "{{ app_dir }}"
+      environment:
+        COMPOSE_PROJECT_NAME: momo-splitwise
+      failed_when: false
+      ignore_errors: yes
+      register: backend_restart
+
+    - name: Final backend health check
+      uri:
+        url: "http://localhost:5001/health"
+        method: GET
+        status_code: [200, 404, 502, 503, 000]
+      register: final_backend_check
+      retries: 10
+      delay: 5
+      failed_when: false
+      ignore_errors: yes
+
+    - name: Display final backend status
+      debug:
+        msg:
+          - "Final backend status: {{ final_backend_check.status }}"
+          - "Backend response: {{ final_backend_check.json | default('No response') }}"
 
     - name: Verify containers are running
       shell: docker ps
