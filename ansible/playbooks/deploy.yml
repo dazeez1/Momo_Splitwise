@@ -173,7 +173,7 @@
 
     - name: Check backend container health status
       shell: |
-        docker inspect momo-splitwise-backend --format='{{.State.Status}}|{{.State.Health.Status}}|{{.State.ExitCode}}' 2>/dev/null || echo "not-found|unknown|1"
+        docker inspect momo-splitwise-backend --format='{{ "{{" }}.State.Status{{ "}}" }}|{{ "{{" }}.State.Health.Status{{ "}}" }}|{{ "{{" }}.State.ExitCode{{ "}}" }}' 2>/dev/null || echo "not-found|unknown|1"
       register: backend_health_status
       changed_when: false
       failed_when: false
