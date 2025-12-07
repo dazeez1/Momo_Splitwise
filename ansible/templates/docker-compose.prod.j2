@@ -32,9 +32,7 @@ services:
       - FRONTEND_URL=http://{{ application_vm_public_ip | default('158.158.49.253') }}
     networks:
       - app-network
-    depends_on:
-      mongo:
-        condition: service_healthy
+    # Removed depends_on mongo since we're using MongoDB Atlas
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s

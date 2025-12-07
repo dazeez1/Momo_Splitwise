@@ -59,7 +59,7 @@
     - name: Create .env.production file
       copy:
         content: |
-          MONGODB_URI={{ mongodb_uri | default('mongodb://momo_user:momo_password@mongo:27017/momo_splitwise?authSource=admin') }}
+          MONGODB_URI={{ mongodb_uri | default('mongodb+srv://vephladamilare:Password123@cluster0.ywhkng4.mongodb.net/Momo-split?retryWrites=true&w=majority&appName=Cluster0') }}
           JWT_SECRET={{ jwt_secret | default('change-me-in-production') }}
           SESSION_SECRET={{ session_secret | default('change-me-in-production') }}
           MONGO_USER={{ mongo_user | default('momo_user') }}
