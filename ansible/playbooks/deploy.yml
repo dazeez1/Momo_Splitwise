@@ -59,7 +59,7 @@
     - name: Create .env.production file
       copy:
         content: |
-          MONGODB_URI={{ mongodb_uri | default('mongodb://momo_user:momo_password@mongo:27017/momo_splitwise?authSource=admin') }}
+          MONGODB_URI={{ mongodb_uri | default('mongodb+srv://vephladamilare:Password123@cluster0.ywhkng4.mongodb.net/Momo-split?retryWrites=true&w=majority&appName=Cluster0') }}
           JWT_SECRET={{ jwt_secret | default('change-me-in-production') }}
           SESSION_SECRET={{ session_secret | default('change-me-in-production') }}
           MONGO_USER={{ mongo_user | default('momo_user') }}
@@ -87,6 +87,30 @@
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
 
+    - name: Check and stop service using port 80
+      shell: |
+        # Check if something is using port 80
+        if ss -tuln | grep -q ':80 ' || lsof -i :80 > /dev/null 2>&1; then
+          echo "Port 80 is in use, freeing it..."
+          # Try to find and stop nginx or apache
+          systemctl stop nginx 2>/dev/null || true
+          systemctl stop apache2 2>/dev/null || true
+          systemctl stop httpd 2>/dev/null || true
+          # Find and kill any process using port 80
+          PID=$(ss -tuln | grep ':80 ' | awk '{print $5}' | cut -d: -f1 | head -1 || lsof -ti :80 | head -1)
+          if [ -n "$PID" ]; then
+            kill -9 $PID 2>/dev/null || true
+          fi
+          # Alternative: use fuser if available
+          fuser -k 80/tcp 2>/dev/null || true
+          sleep 2
+          echo "Port 80 should now be free"
+        else
+          echo "Port 80 is free"
+        fi
+      become: yes
+      ignore_errors: yes
+
     - name: Start containers with docker-compose
       shell: |
         docker compose -f {{ docker_compose_file }} --env-file {{ app_dir }}/.env.production up -d --force-recreate --remove-orphans
@@ -95,16 +119,106 @@
       environment:
         COMPOSE_PROJECT_NAME: momo-splitwise
 
+    - name: Wait for MongoDB to be ready (skip if using MongoDB Atlas)
+      shell: |
+        # Check if using MongoDB Atlas (mongodb+srv) or local MongoDB
+        MONGODB_URI="{{ mongodb_uri | default('mongodb+srv://vephladamilare:Password123@cluster0.ywhkng4.mongodb.net/Momo-split?retryWrites=true&w=majority&appName=Cluster0') }}"
+        if echo "$MONGODB_URI" | grep -q "mongodb+srv"; then
+          echo "Using MongoDB Atlas, skipping local MongoDB wait"
+        else
+          echo "Using local MongoDB, waiting for it to be ready..."
+          timeout 120 bash -c 'until docker exec momo-mongo mongosh --quiet --eval "db.runCommand({ ping: 1 })" > /dev/null 2>&1; do sleep 2; done'
+        fi
+      ignore_errors: yes
+      register: mongo_wait
+      changed_when: false
+
+    - name: Check container status immediately
+      shell: docker ps
+      register: container_status
+      changed_when: false
+
+    - name: Display container status
+      debug:
+        msg: "{{ container_status.stdout_lines }}"
+
+    - name: Check backend container status and logs
+      shell: |
+        echo "=== Backend Container Status ==="
+        docker ps -a | grep momo-splitwise-backend || echo "Container not found"
+        echo ""
+        echo "=== Backend Container Logs (last 50 lines) ==="
+        docker logs momo-splitwise-backend --tail 50 2>&1 || echo "Cannot retrieve logs"
+        echo ""
+        echo "=== Testing backend from inside VM ==="
+        curl -s http://localhost:5001/health || echo "Backend not responding on localhost:5001"
+      register: backend_status
+      failed_when: false
+      ignore_errors: yes
+
+    - name: Display backend status
+      debug:
+        msg: "{{ backend_status.stdout_lines }}"
+
     - name: Wait for backend to be healthy
       uri:
         url: "http://localhost:5001/health"
         method: GET
-        status_code: [200, 404, 502, 503]
+        status_code: [200, 404, 502, 503, 000]
       register: health_check
       until: health_check.status == 200
-      retries: 20
-      delay: 15
+      retries: 30
+      delay: 10
       ignore_errors: yes
+
+    - name: Check backend container health status
+      shell: |
+        docker inspect momo-splitwise-backend --format='{{ "{{" }}.State.Status{{ "}}" }}|{{ "{{" }}.State.Health.Status{{ "}}" }}|{{ "{{" }}.State.ExitCode{{ "}}" }}' 2>/dev/null || echo "not-found|unknown|1"
+      register: backend_health_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display backend health status
+      debug:
+        msg:
+          - "Backend container status: {{ backend_health_status.stdout }}"
+          - "If status is not 'running', check logs above"
+
+    - name: Restart backend if not responding
+      shell: |
+        # Check if backend is responding
+        if ! curl -f -s http://localhost:5001/health > /dev/null 2>&1; then
+          echo "Backend not responding, restarting..."
+          docker restart momo-splitwise-backend || docker compose -f {{ docker_compose_file }} --env-file {{ app_dir }}/.env.production restart backend
+          sleep 10
+          echo "Backend restarted, waiting for it to be ready..."
+        else
+          echo "Backend is responding"
+        fi
+      args:
+        chdir: "{{ app_dir }}"
+      environment:
+        COMPOSE_PROJECT_NAME: momo-splitwise
+      failed_when: false
+      ignore_errors: yes
+      register: backend_restart
+
+    - name: Final backend health check
+      uri:
+        url: "http://localhost:5001/health"
+        method: GET
+        status_code: [200, 404, 502, 503, 000]
+      register: final_backend_check
+      retries: 10
+      delay: 5
+      failed_when: false
+      ignore_errors: yes
+
+    - name: Display final backend status
+      debug:
+        msg:
+          - "Final backend status: {{ final_backend_check.status }}"
+          - "Backend response: {{ final_backend_check.json | default('No response') }}"
 
     - name: Verify containers are running
       shell: docker ps

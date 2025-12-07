@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": false
   },
-  "include": ["src"]
+  "include": ["src", "src/**/*.d.ts"]
 }

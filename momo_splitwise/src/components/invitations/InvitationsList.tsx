@@ -28,7 +28,7 @@ const InvitationsList: React.FC<InvitationsListProps> = ({
   const loadInvitations = async () => {
     setIsLoading(true);
     try {
-      const response = await apiService.getInvitations();
+      const response = await apiService.getInvitations() as any;
       const fetchedInvitations =
         response.data?.invitations || response.invitations || [];
 

@@ -25,7 +25,15 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:5174"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5174",
+      "http://localhost:5173",
+      "http://158.158.49.253",
+      "http://158.158.49.253:5001",
+      "http://68.221.206.80",
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -37,7 +45,15 @@ const PORT = process.env.PORT || 5001;
 app.use(helmet());
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5174"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5174",
+      "http://localhost:5173",
+      "http://158.158.49.253",
+      "http://158.158.49.253:5001",
+      "http://68.221.206.80",
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -115,25 +131,31 @@ const connectDatabase = async () => {
       );
     }
 
-    // Enhanced connection options for MongoDB Atlas
+    console.log("🔌 Attempting MongoDB connection...");
+    console.log("💡 MongoDB URI format:", mongoUri ? mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@') : 'Not set');
+
+    // Enhanced connection options for MongoDB
     const connectionOptions = {
       maxPoolSize: 10, // Maintain up to 10 socket connections
-      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+      serverSelectionTimeoutMS: 10000, // Keep trying to send operations for 10 seconds
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
       bufferCommands: false, // Disable mongoose buffering
+      retryWrites: true,
     };
 
     await mongoose.connect(mongoUri, connectionOptions);
 
-    console.log("✅ MongoDB Atlas connected successfully");
+    console.log("✅ MongoDB connected successfully");
     console.log(`📊 Database: ${mongoose.connection.db.databaseName}`);
     console.log(`🌐 Host: ${mongoose.connection.host}`);
   } catch (error) {
-    console.error("❌ MongoDB Atlas connection error:", error.message);
-    console.error(
-      "💡 Make sure your MONGODB_URI is correct and your IP is whitelisted"
-    );
-    process.exit(1);
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGODB_URL;
+    console.error("❌ MongoDB connection error:", error.message);
+    console.error("💡 MongoDB URI:", mongoUri ? mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@') : 'Not set');
+    console.error("💡 Error details:", error);
+    // Don't exit immediately - let the server start and retry
+    // The depends_on in docker-compose should ensure MongoDB is ready
+    throw error;
   }
 };
 
@@ -168,7 +190,7 @@ const startServer = async () => {
   try {
     await connectDatabase();
 
-    httpServer.listen(PORT, () => {
+    httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Health check: http://localhost:${PORT}/health`);
       console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth`);

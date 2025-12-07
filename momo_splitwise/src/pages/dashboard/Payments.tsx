@@ -18,7 +18,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { formatCurrency } from "../../utils/calculations";
 import SendPaymentModal from "../../components/payments/SendPaymentModal";
 import RequestPaymentModal from "../../components/payments/RequestPaymentModal";
-import type { Balance } from "../../types";
+import type { Balance, Payment } from "../../types";
 import apiService from "../../services/apiService";
 
 // PaymentRequest interface removed - now using Payment from AppContext
@@ -177,7 +177,7 @@ const Payments: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: PaymentRequest["status"]) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
         return <CheckCircle className="h-5 w-5 text-green-500" />;
@@ -194,7 +194,7 @@ const Payments: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: PaymentRequest["status"]) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
         return "text-green-700 bg-green-50 border-green-200";
