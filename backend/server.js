@@ -25,7 +25,15 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:5174"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5174",
+      "http://localhost:5173",
+      "http://158.158.49.253",
+      "http://158.158.49.253:5001",
+      "http://68.221.206.80",
+      process.env.FRONTEND_URL,
+    ].filter(Boolean),
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -41,6 +49,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5174",
       "http://localhost:5173",
+      "http://158.158.49.253",
       "http://158.158.49.253:5001",
       "http://68.221.206.80",
       process.env.FRONTEND_URL,
